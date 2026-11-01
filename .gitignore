@@ -11,3 +11,7 @@ keystore/
 *.jks
 *.keystore
 *.p12
+/android/
+/ios/
+coverage/
+.jest-cache/

@@ -1,0 +1,95 @@
+name: Build Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'modules/**'
+      - 'effects/**'
+      - 'assets/**'
+      - 'plugins/**'
+      - 'scripts/**'
+      - 'package*.json'
+      - 'app*.js'
+      - 'app.json'
+      - 'App.tsx'
+      - 'index.ts'
+      - 'babel.config.js'
+      - 'tsconfig.json'
+      - 'jest.config.js'
+      - '.github/workflows/android.yml'
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check TypeScript, shader generation and session tests
+        run: |
+          npm run typecheck
+          npm run check:shaders
+          node scripts/check-shader.cjs
+          npm test -- --runInBand
+      - name: Generate Android project
+        run: npx expo prebuild --clean --platform android --no-install
+      - name: Verify native exporter registration
+        run: |
+          npx expo-modules-autolinking resolve --platform android > /tmp/expo-modules.json
+          node -e "const fs=require('fs');const x=fs.readFileSync('/tmp/expo-modules.json','utf8');if(!x.includes('expo.modules.retroexport.RetroExportModule'))throw Error('Native exporter is not registered');"
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
+      - name: Build standalone test APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+      - name: Verify signature and prepare download
+        run: |
+          mkdir -p release-apk
+          cp android/app/build/outputs/apk/release/app-release.apk release-apk/YAi-Retro-Camera-stage-0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-apk/YAi-Retro-Camera-stage-0.apk
+          cd release-apk
+          sha256sum YAi-Retro-Camera-stage-0.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YAi-Retro-Camera-stage-0-${{ github.run_number }}
+          path: release-apk/*
+          if-no-files-found: error
+      - name: Publish test APK to Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="stage-0-${GITHUB_RUN_NUMBER}"
+          cat > /tmp/release-notes.md <<'NOTES'
+          Android 10+ (ARM64 / ARMv7). Test build, signed with the standard development key. No production signing keys are used.
+
+          Camera → separate clips → warm/grain effect → Media3 export → gallery.
+          Stage 0 still requires the owner's real-phone test: three clips, visible effect, synchronized audio, playback from gallery.
+          This APK starts without Metro, Expo Go, a computer or an account.
+          NOTES
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release-apk/* --clobber
+          else
+            gh release create "$tag" release-apk/* --target "$GITHUB_SHA" --prerelease --title "Stage 0 test build ${GITHUB_RUN_NUMBER}" --notes-file /tmp/release-notes.md
+          fi

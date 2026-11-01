@@ -1,0 +1,22 @@
+# Источники и лицензии
+
+В поставляемых исходниках нет внешних фото, LUT, текстур, музыки или звуков. Каталоги luts/textures/sounds зарезервированы для последующих этапов. Зерно вычисляется процедурно. `effects/warm-film.glsl` и генератор диалектов — код проекта, внешних шейдеров не копировали. Исходную hash-формулу Antigravity заменили простой собственной формулой на основе модульной арифметики.
+
+Прямые runtime-компоненты (полные тексты лицензий находятся в соответствующих npm-пакетах/репозиториях):
+
+| Компонент | Версия | Лицензия | Официальный источник |
+|---|---|---|---|
+| Expo | 52.0.49 | MIT | https://github.com/expo/expo |
+| expo-modules-core | 2.2.3 | MIT | https://github.com/expo/expo/tree/sdk-52/packages/expo-modules-core |
+| React | 18.3.1 | MIT | https://github.com/facebook/react |
+| React Native | 0.76.9 | MIT | https://github.com/facebook/react-native |
+| VisionCamera | 4.7.3 | MIT | https://github.com/mrousavy/react-native-vision-camera |
+| React Native Skia | 1.5.0 | MIT | https://github.com/Shopify/react-native-skia |
+| Worklets Core | 1.6.3 | MIT | https://github.com/margelo/react-native-worklets-core |
+| Reanimated | 3.16.7 | MIT | https://github.com/software-mansion/react-native-reanimated |
+| AndroidX Media3 Transformer / Effect / Common / ExoPlayer | 1.5.0 | Apache-2.0 | https://github.com/androidx/media/tree/1.5.0 |
+| Skia / CanvasKit (прямая проверка шейдера использует транзитивный CanvasKit из Skia) | по package-lock.json | BSD-3-Clause / лицензии третьих компонентов Skia | https://github.com/google/skia |
+
+Android/Expo-шаблон: официальный `expo-template-bare-minimum` SDK 52, MIT. JDK/SDK/NDK — инструменты сборки, не сторонний видеосервис. Полный npm-граф зафиксирован в package-lock.json. Dev-инструменты Jest, ts-jest, TypeScript, Babel — по лицензиям их пакетов; их код не добавляется в runtime приложения как продуктовая функция.
+
+FFmpeg/FFmpegKit, GPL-код, платные SDK и закрытый код Blackmagic Camera не добавлялись. Это реестр используемых компонентов, а не утверждение о проведённой юридической экспертизе всех транзитивных пакетов. При добавлении ресурса обязательно записывать отдельные источник, лицензию и условия атрибуции.
