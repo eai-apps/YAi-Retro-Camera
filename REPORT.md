@@ -1,3 +1,7 @@
+## Дополнение CI — запуск 41344313618
+
+Чистая npm ci, TypeScript, генерация/компиляция шейдеров, все 28 тестов, Expo prebuild и native registration прошли на Ubuntu/Node 22. Сборка остановилась до Gradle: sdkmanager отсутствовал в PATH runner. Workflow исправлен: теперь явно устанавливаются Android command-line tools через android-actions/setup-android v4 (закреплён пакет tools 12266719), затем SDK/build-tools 35 и NDK 26.1.10909125. Это настройка CI; Android-компиляция пока не подтверждена.
+
 # Проверка Codex — 2026-11-01 20:55 (Europe/Berlin)
 
 Исполнитель: Codex (GPT-6). Исходные материалы: код и отчёт Antigravity из TempCode; чат владельца с его итоговым сообщением. Снимок входных исходников сохранён отдельно в рабочем каталоге проверки, без node_modules и ключей.

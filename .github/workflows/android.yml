@@ -60,6 +60,11 @@ jobs:
           npx expo-modules-autolinking resolve --platform android > /tmp/expo-modules.json
           node -e "const fs=require('fs');const x=fs.readFileSync('/tmp/expo-modules.json','utf8');if(!x.includes('expo.modules.retroexport.RetroExportModule'))throw Error('Native exporter is not registered');"
       - name: Install Android build tools
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '12266719'
+          log-accepted-android-sdk-licenses: false
+      - name: Install platform and NDK
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
       - name: Build standalone test APK
         working-directory: android
