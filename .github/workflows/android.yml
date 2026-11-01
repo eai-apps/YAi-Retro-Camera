@@ -53,6 +53,8 @@ jobs:
           npm run check:shaders
           node scripts/check-shader.cjs
           npm test -- --runInBand
+      - name: Verify standalone Android JS bundle
+        run: npx expo export --platform android --output-dir /tmp/retro-bundle-check --max-workers 2
       - name: Generate Android project
         run: npx expo prebuild --clean --platform android --no-install
       - name: Verify native exporter registration

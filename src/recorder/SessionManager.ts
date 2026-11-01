@@ -95,7 +95,7 @@ export class SessionManager {
   }
   async recordingFinished(video: FinalizedVideo): Promise<void> {
     // Unrequested native completion (interruption), rather than a pause/stop callback.
-    if (this.isTransitioning || this.state !== 'recording') return;
+    if (this.isTransitioning || !['recording','error'].includes(this.state)) return;
     this.isTransitioning = true; this.setState('finalizing');
     try {await this.handleFinalizedChunk(video); this.setState('stopped');}
     catch (e) {this.errorMessage = message(e); this.setState('error');}
@@ -130,7 +130,7 @@ export class SessionManager {
     finally {this.isTransitioning = false;}
   }
   async resetSession(): Promise<boolean> {
-    if (this.isTransitioning || ['recording','starting','finalizing','exporting'].includes(this.state)) return false;
+    if (this.isTransitioning || this.cameraDriver?.isRecording?.() || ['recording','starting','finalizing','exporting'].includes(this.state)) return false;
     this.isTransitioning = true;
     try {
       await this.persist(); // Archive the old catalog and keep its source files.

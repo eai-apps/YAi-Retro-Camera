@@ -8,6 +8,7 @@
 |---|---|---|---|
 | Expo | 52.0.49 | MIT | https://github.com/expo/expo |
 | expo-modules-core | 2.2.3 | MIT | https://github.com/expo/expo/tree/sdk-52/packages/expo-modules-core |
+| expo-asset | 11.0.5 | MIT | https://github.com/expo/expo/tree/sdk-52/packages/expo-asset |
 | React | 18.3.1 | MIT | https://github.com/facebook/react |
 | React Native | 0.76.9 | MIT | https://github.com/facebook/react-native |
 | VisionCamera | 4.7.3 | MIT | https://github.com/mrousavy/react-native-vision-camera |

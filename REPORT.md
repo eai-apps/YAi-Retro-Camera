@@ -1,3 +1,15 @@
+## Проверки после восстановления зависимости — 02.11.2026
+
+Установка expo-asset 11.0.5 выполнена; package-lock обновлён. Повторно успешно: TypeScript, генерация шейдера, компиляция SkSL, 29 тестов / 4 набора. Локальный Metro export проверяется отдельно; CI теперь проверяет standalone bundle до генерации Android/Gradle и публикует APK только после всех успешных шагов.
+
+Файлы текущего дополнения: .github/workflows/android.yml, HANDOFF.md, REPORT.md, app.json, assets/LICENSES.md, package.json, package-lock.json, src/recorder/SessionManager.ts, src/recorder/__tests__/Recovery.test.ts.
+
+## Продолжение после лимита — 02.11.2026, Codex (GPT-6)
+
+Main перепроверена: ac0d301, посторонних коммитов нет. Вторая сборка 41344460633 прошла проверку SDK и дошла до создания автономного bundle, где обнаружился отсутствующий expo-asset. Добавлен expo-asset 11.0.5 из SDK 52 и отдельная проверка bundle до Gradle. Также сохраняется валидный поздний callback после ошибки stop-запроса; добавлен 29-й тест. Запрещены неиспользуемые SYSTEM_ALERT_WINDOW/VIBRATE. Первоначальный отказ automatic approval review был вызван исчерпанным лимитом; после возобновления владельцем повторная разрешённая установка выполнена.
+
+Ни APK, ни релиза на момент этой записи ещё нет. Дальнейшие результаты CI будут добавлены сверху.
+
 ## Дополнение CI — запуск 41344313618
 
 Чистая npm ci, TypeScript, генерация/компиляция шейдеров, все 28 тестов, Expo prebuild и native registration прошли на Ubuntu/Node 22. Сборка остановилась до Gradle: sdkmanager отсутствовал в PATH runner. Workflow исправлен: теперь явно устанавливаются Android command-line tools через android-actions/setup-android v4 (закреплён пакет tools 12266719), затем SDK/build-tools 35 и NDK 26.1.10909125. Это настройка CI; Android-компиляция пока не подтверждена.

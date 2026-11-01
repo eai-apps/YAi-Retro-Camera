@@ -50,3 +50,10 @@ test('two concurrent export requests do not launch two native exports',async()=>
   const first=manager.exportAndStitch(); const second=await manager.exportAndStitch();
   expect(second.success).toBe(false); expect((await first).success).toBe(true); expect(exporter.exportChunks).toHaveBeenCalledTimes(1);
 });
+test('valid late completion is preserved after a failed stop request',async()=>{
+  const {manager,camera}=setup(); await manager.startRecording();
+  camera.stopRecording.mockRejectedValueOnce(new Error('stop request failed'));
+  expect(await manager.stopRecording()).toBe(false);
+  await manager.recordingFinished({uri:'file:///private/c1.mp4',durationMs:4000,sizeBytes:2000});
+  expect(manager.getChunks()).toHaveLength(1); expect(manager.getState()).toBe('stopped');
+});
