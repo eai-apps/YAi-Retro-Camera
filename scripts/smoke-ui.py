@@ -89,6 +89,28 @@ try:
     # Return the scroll to the header on short screens.
     size = list(map(int, re.findall(r'\d+', adb('shell', 'wm', 'size').decode())[-2:]))
     adb('shell', 'input', 'swipe', str(size[0]//2), str(size[1]//3), str(size[0]//2), str(size[1]*4//5), '400')
+    # Photo does not need the microphone. The first live-video switch must wait
+    # for the user's runtime grant before binding CameraX's audio use case.
+    tap('Видео')
+    for _ in range(20):
+        buttons=[n for n in window().iter('node') if n.get('resource-id','').split('/')[-1]
+                 in ('permission_allow_foreground_only_button','permission_allow_button')]
+        if buttons:
+            coords=list(map(int,re.findall(r'-?\d+',buttons[0].get('bounds',''))))
+            assert len(coords)==4, 'Microphone permission control has no bounds'
+            adb('shell','input','tap',str((coords[0]+coords[2])//2),str((coords[1]+coords[3])//2))
+            break
+        time.sleep(.5)
+    else:
+        raise AssertionError('First live-video switch did not request microphone permission')
+    for _ in range(30):
+        if any(n.get('enabled')=='true' for n in nodes('Начать запись')):
+            break
+        time.sleep(1)
+    else:
+        raise AssertionError('Camera did not become ready after microphone grant')
+    shot('04-microphone-permission')
+    tap('Фото')
     tap('Настройки')
     wait_text('Настройки съёмки')
     shot('04-settings')

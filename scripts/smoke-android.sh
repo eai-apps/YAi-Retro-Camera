@@ -6,7 +6,7 @@ helper=$(find ui-dump-helper -name '*.apk' -print -quit)
 test -n "$helper"
 adb install -r "$helper"
 adb shell pm grant com.eai.retrocamera android.permission.CAMERA
-adb shell pm grant com.eai.retrocamera android.permission.RECORD_AUDIO
+# Microphone permission is granted through the real system dialog in smoke-ui.py.
 trap 'timeout 15s adb logcat -d > smoke-output/logcat.txt || true; timeout 15s adb exec-out screencap -p > smoke-output/failure-screen.png || true' EXIT
 timeout 15s adb logcat -c || true
 timeout 30s adb shell am start -W -n com.eai.retrocamera/.MainActivity

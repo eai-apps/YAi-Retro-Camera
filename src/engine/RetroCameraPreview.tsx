@@ -21,12 +21,14 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
   const device = useCameraHardware(position);
   const width=quality==='4k'?3840:quality==='720'?1280:1920;
   const format = useCameraFormat(device?.formats.length?device:undefined, [{videoResolution: {width, height:width*9/16}}, {fps: 30},{photoResolution:'max'}]);
-  const [permission, setPermission] = useState<boolean | null>(null);
+  const [permission, setPermission] = useState<{camera:boolean;microphone:boolean} | null>(null);
+  const permitted=permission?.camera===true&&(!audio||mode==='photo'||permission.microphone);
   const [permissionError, setPermissionError] = useState('');
   const [compatiblePreview,setCompatiblePreview]=useState(false);
   useEffect(()=>{setCompatiblePreview(false)},[mode,quality,position]);
   const configurationKey=[device?.id,mode,format?.videoWidth,format?.videoHeight,format?.photoWidth,format?.photoHeight,compatiblePreview?'native':'skia'].join(':');
   const [initializedFor,setInitializedFor]=useState('');
+  useEffect(()=>{if(!permitted)setInitializedFor('')},[permitted]);
   const paintAndBuilder = useMemo(() => {
     const effect = Skia.RuntimeEffect.Make(WARM_FILM_SKSL_SHADER);
     if (!effect) throw new Error('Не удалось создать эффект камеры');
@@ -53,17 +55,17 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
         let microphone = Camera.getMicrophonePermissionStatus();
         if (camera === 'not-determined') camera = await Camera.requestCameraPermission();
         if (audio && mode==='video' && microphone === 'not-determined') microphone = await Camera.requestMicrophonePermission();
-        if (alive) setPermission(camera === 'granted' && (!audio||mode==='photo'||microphone === 'granted'));
-      } catch (e) { if (alive) {setPermission(false); setPermissionError(String(e));} }
+        if (alive) setPermission({camera:camera==='granted',microphone:microphone==='granted'});
+      } catch (e) { if (alive) {setPermission({camera:false,microphone:false}); setPermissionError(String(e));} }
     };
     void request();
     const subscription = AppState.addEventListener('change', state => {if (state === 'active') void request();});
     return () => { alive = false; subscription.remove(); };
   }, [audio,mode]);
   useEffect(()=>{if(format)onFormat?.(mode==='photo'?format.photoWidth:format.videoWidth,mode==='photo'?format.photoHeight:format.videoHeight);else onFormat?.(0,0)},[format,mode,onFormat]);
-  useEffect(() => { onReady(permission === true && initializedFor === configurationKey && isActive && (mode==='photo'||!!format)); }, [permission, initializedFor, configurationKey, isActive, mode, format, onReady]);
+  useEffect(() => { onReady(permitted && initializedFor === configurationKey && isActive && (mode==='photo'||!!format)); }, [permitted, initializedFor, configurationKey, isActive, mode, format, onReady]);
   if (permission === null) return <View style={styles.center}><ActivityIndicator /><Text style={styles.text}>Проверка камеры и микрофона…</Text></View>;
-  if (!permission) return <View style={styles.center}>
+  if (!permitted) return <View style={styles.center}>
     <Text style={styles.text}>Для записи со звуком разрешите камеру и микрофон в настройках приложения.{permissionError}</Text>
     <TouchableOpacity onPress={() => void Linking.openSettings()}><Text style={styles.action}>Открыть настройки</Text></TouchableOpacity>
   </View>;
