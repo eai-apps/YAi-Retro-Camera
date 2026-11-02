@@ -59,13 +59,14 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
     return () => { alive = false; subscription.remove(); };
   }, [audio,mode]);
   useEffect(()=>{if(format)onFormat?.(mode==='photo'?format.photoWidth:format.videoWidth,mode==='photo'?format.photoHeight:format.videoHeight);else onFormat?.(0,0)},[format,mode,onFormat]);
-  useEffect(() => { onReady(permission === true && initializedFor === configurationKey && isActive); }, [permission, initializedFor, configurationKey, isActive, onReady]);
+  useEffect(() => { onReady(permission === true && initializedFor === configurationKey && isActive && (mode==='photo'||!!format)); }, [permission, initializedFor, configurationKey, isActive, mode, format, onReady]);
   if (permission === null) return <View style={styles.center}><ActivityIndicator /><Text style={styles.text}>Проверка камеры и микрофона…</Text></View>;
   if (!permission) return <View style={styles.center}>
     <Text style={styles.text}>Для записи со звуком разрешите камеру и микрофон в настройках приложения.{permissionError}</Text>
     <TouchableOpacity onPress={() => void Linking.openSettings()}><Text style={styles.action}>Открыть настройки</Text></TouchableOpacity>
   </View>;
   if (!device) return <View style={styles.center}><Text style={styles.text}>Подходящая камера не найдена.</Text></View>;
+  if(mode==='video'&&!format)return <View style={styles.center}><Text style={styles.text}>Эта камера не предоставляет поддерживаемые видеорежимы. Переключите камеру или выберите «Фото».</Text></View>;
   return <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format}
     fps={format?Math.max(format.minFps, Math.min(30, format.maxFps)):undefined} videoHdr={false} photoHdr={false}
     isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={processor} pixelFormat="yuv" outputOrientation="preview" resizeMode="contain"

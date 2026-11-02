@@ -74,3 +74,11 @@ const ranked=`            sizes.filter { it.width.toLong() * it.height <= previe
               .ifEmpty`;
 if(configuration.includes(unranked))fs.writeFileSync(configurationFile,configuration.replace(unranked,ranked));
 else if(!configuration.includes('sortedWith(compareBy<android.util.Size>'))throw Error('Review preview aspect ratio ranking patch');
+
+// A chosen recording quality must fail explicitly instead of silently using SD/HD.
+const formatFile=path.join(root,'android/src/main/java/com/mrousavy/camera/core/types/CameraDeviceFormat.kt');
+let deviceFormat=fs.readFileSync(formatFile,'utf8');
+const flexibleQuality='QualitySelector.from(targetQuality, FallbackStrategy.higherQualityOrLowerThan(targetQuality))';
+const exactQuality='QualitySelector.from(targetQuality)';
+if(deviceFormat.includes(flexibleQuality))fs.writeFileSync(formatFile,deviceFormat.replace(flexibleQuality,exactQuality));
+else if(!deviceFormat.includes(exactQuality))throw Error('Review exact recording quality patch');
