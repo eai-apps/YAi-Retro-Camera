@@ -48,7 +48,7 @@ def tap(label, last=False):
     for _ in range(4):
         matches = [n for n in nodes(label) if n.get('enabled') == 'true']
         for n in reversed(matches) if last else matches:
-            coords = list(map(int, re.findall(r'\d+', n.get('bounds', ''))))
+            coords = list(map(int, re.findall(r'-?\d+', n.get('bounds', ''))))
             if len(coords) == 4 and coords[2] > coords[0] and coords[3] > coords[1]:
                 adb('shell', 'input', 'tap', str((coords[0]+coords[2])//2), str((coords[1]+coords[3])//2))
                 time.sleep(1)

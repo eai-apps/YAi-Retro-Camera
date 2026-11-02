@@ -22,6 +22,9 @@ class FastDumpTest {
             android.os.SystemClock.sleep(100);active=automation.rootInActiveWindow
         }
         val root=active?:error("No active Android window")
+        val screen=android.graphics.Point()
+        (instrumentation.context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager).defaultDisplay.getRealSize(screen)
+        val screenBounds=Rect(0,0,screen.x,screen.y)
         val output=StringWriter();val xml=Xml.newSerializer()
         xml.setOutput(output);xml.startDocument("UTF-8",true)
         xml.startTag(null,"hierarchy");xml.attribute(null,"rotation","0")
@@ -35,9 +38,10 @@ class FastDumpTest {
             xml.attribute(null,"enabled",info.isEnabled.toString())
             xml.attribute(null,"clickable",info.isClickable.toString())
             val bounds=Rect();info.getBoundsInScreen(bounds)
+            if(!bounds.intersect(screenBounds))bounds.setEmpty()
             xml.attribute(null,"bounds","[${bounds.left},${bounds.top}][${bounds.right},${bounds.bottom}]")
             for(i in 0 until info.childCount) info.getChild(i)?.let { child->
-                try{node(child)}finally{child.recycle()}
+                try{if(child.isVisibleToUser)node(child)}finally{child.recycle()}
             }
             xml.endTag(null,"node")
         }
