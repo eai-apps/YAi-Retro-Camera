@@ -116,7 +116,7 @@ jobs:
           target: google_apis
           arch: x86_64
           ram-size: 2048M
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back emulated
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back emulated -camera-front emulated
           script: bash scripts/smoke-android.sh
       - uses: actions/upload-artifact@v4
         if: always()

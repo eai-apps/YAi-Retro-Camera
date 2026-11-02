@@ -66,7 +66,7 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
   if (!device || !format) return <View style={styles.center}><Text style={styles.text}>Подходящая камера не найдена.</Text></View>;
   return <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format}
     fps={Math.max(format.minFps, Math.min(30, format.maxFps))} videoHdr={false} photoHdr={false}
-    isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={processor} pixelFormat="yuv" outputOrientation="preview"
+    isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={processor} pixelFormat="yuv" outputOrientation="preview" resizeMode="contain"
     videoBitRate={quality==='4k'?40:quality==='1080'?18:8}
     onInitialized={() => setInitialized(true)} onStarted={()=>setInitialized(true)} onStopped={()=>setInitialized(false)} onError={error => {setInitialized(false); onError(error);}} />;
 }

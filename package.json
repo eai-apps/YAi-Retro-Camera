@@ -11,7 +11,8 @@
     "check:shaders": "node scripts/generate-shaders.cjs --check",
     "generate:shaders": "node scripts/generate-shaders.cjs",
     "ios": "expo run:ios",
-    "check:shader-compile": "node scripts/check-shader.cjs"
+    "check:shader-compile": "node scripts/check-shader.cjs",
+    "postinstall": "node scripts/patch-vision-camera.cjs"
   },
   "dependencies": {
     "@react-native-community/slider": "4.5.5",
