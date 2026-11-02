@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, AppState, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Camera, useCameraFormat, useSkiaFrameProcessor } from 'react-native-vision-camera';
 import {useCameraHardware} from '../features/useCameraHardware';
 import { Skia } from '@shopify/react-native-skia';
@@ -71,9 +71,7 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
   if(mode==='video'&&!format)return <View style={styles.center}><Text style={styles.text}>Эта камера не предоставляет поддерживаемые видеорежимы. Переключите камеру или выберите «Фото».</Text></View>;
   return <><Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format}
     fps={format?Math.max(format.minFps, Math.min(30, format.maxFps)):undefined} videoHdr={false} photoHdr={false}
-    // Use CameraX's RGBA conversion on Android 9 to avoid legacy YUV GPU import.
-    // Capture/export resolution is independent of this display-sized stream.
-    isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={compatiblePreview?undefined:processor} pixelFormat={Platform.OS==='android'&&Number(Platform.Version)===28?'rgb':'yuv'} outputOrientation="preview" resizeMode="contain"
+    isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={compatiblePreview?undefined:processor} pixelFormat="yuv" outputOrientation="preview" resizeMode="contain"
     videoBitRate={quality==='4k'?40:quality==='1080'?18:8}
     onInitialized={() => setInitializedFor(configurationKey)} onStarted={()=>setInitializedFor(configurationKey)} onError={error => {
       setInitializedFor('');
