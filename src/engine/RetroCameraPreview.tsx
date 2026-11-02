@@ -23,8 +23,8 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
   const format = useCameraFormat(device?.formats.length?device:undefined, [{videoResolution: {width, height:width*9/16}}, {fps: 30},{photoResolution:'max'}]);
   const [permission, setPermission] = useState<boolean | null>(null);
   const [permissionError, setPermissionError] = useState('');
-  const [initialized, setInitialized] = useState(false);
-  useEffect(()=>{setInitialized(false)},[quality,position,mode]);
+  const configurationKey=[device?.id,mode,format?.videoWidth,format?.videoHeight,format?.photoWidth,format?.photoHeight].join(':');
+  const [initializedFor,setInitializedFor]=useState('');
   const paintAndBuilder = useMemo(() => {
     const effect = Skia.RuntimeEffect.Make(WARM_FILM_SKSL_SHADER);
     if (!effect) throw new Error('Не удалось создать эффект камеры');
@@ -59,7 +59,7 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
     return () => { alive = false; subscription.remove(); };
   }, [audio,mode]);
   useEffect(()=>{if(format)onFormat?.(mode==='photo'?format.photoWidth:format.videoWidth,mode==='photo'?format.photoHeight:format.videoHeight);else onFormat?.(0,0)},[format,mode,onFormat]);
-  useEffect(() => { onReady(permission === true && initialized && isActive); }, [permission, initialized, isActive, onReady]);
+  useEffect(() => { onReady(permission === true && initializedFor === configurationKey && isActive); }, [permission, initializedFor, configurationKey, isActive, onReady]);
   if (permission === null) return <View style={styles.center}><ActivityIndicator /><Text style={styles.text}>Проверка камеры и микрофона…</Text></View>;
   if (!permission) return <View style={styles.center}>
     <Text style={styles.text}>Для записи со звуком разрешите камеру и микрофон в настройках приложения.{permissionError}</Text>
@@ -70,7 +70,7 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
     fps={format?Math.max(format.minFps, Math.min(30, format.maxFps)):undefined} videoHdr={false} photoHdr={false}
     isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={processor} pixelFormat="yuv" outputOrientation="preview" resizeMode="contain"
     videoBitRate={quality==='4k'?40:quality==='1080'?18:8}
-    onInitialized={() => setInitialized(true)} onStarted={()=>setInitialized(true)} onError={error => {setInitialized(false); onError(error);}} />;
+    onInitialized={() => setInitializedFor(configurationKey)} onStarted={()=>setInitializedFor(configurationKey)} onError={error => {setInitializedFor(''); onError(error);}} />;
 }
 const styles = StyleSheet.create({center:{flex:1,alignItems:'center',justifyContent:'center',padding:24,backgroundColor:'#111'},
   text:{color:'#eee',textAlign:'center',margin:12},action:{color:'#ffb300',padding:12}});

@@ -55,8 +55,7 @@ export function RetroCameraScreen() {
         return [] as Quality[]; return (['720', '1080', '4k'] as Quality[]).filter(q => { const n = q === '4k' ? 3840 : q === '1080' ? 1920 : 1280; return device.formats.some(f => Math.max(f.videoWidth, f.videoHeight) >= n && Math.min(f.videoWidth, f.videoHeight) >= n * 9 / 16); }); }, [device]);
     const onFormat = useCallback((width: number, height: number) => setFormat({ width, height }), []);
     const changeSettings = (patch: Partial<AppSettings>) => { if (locked)
-        return; if (patch.quality || patch.position)
-        session.onCameraReady(false); update(patch); };
+        return; update(patch); };
     useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
     useEffect(() => { const sub = AppState.addEventListener('change', state => { if (state !== 'active')
         photoCancel.current = true; }); return () => sub.remove(); }, []);
@@ -165,7 +164,7 @@ export function RetroCameraScreen() {
                 await RetroExport.deleteMedia(item.uri); setLibrary(await RetroExport.listMedia()); }); } }]);
     const checkAudio = (chunk: RecordedChunk) => run('Проверяем звук исходного куска…', async () => { const info = await RetroExport.analyzeAudio(chunk.uri); Alert.alert('Звук исходника', info.hasAudio ? `Звуковая дорожка есть.\nСредний уровень: ${info.rmsDb.toFixed(1)} дБ\nПик: ${info.peakDb.toFixed(1)} дБ\n${info.sampleRate} Гц · ${info.channels} кан.\n${info.rmsDb < -45 ? 'Запись очень тихая. Проверьте голос вблизи телефона.' : 'Прослушайте исходник, чтобы оценить разборчивость.'}` : 'В этом куске нет звуковой дорожки.', [{ text: 'Прослушать', onPress: () => { void RetroExport.openVideo(chunk.uri).catch(problem); } }, { text: 'Готово' }]); });
     const modeChange = (next: 'photo' | 'video') => { if (locked)
-        return; session.onCameraReady(false); setMode(next); };
+        return;  setMode(next); };
     const takeVideo = async () => { if (!resumeDecided || !!busy)
         return; try {
         if (recording)
@@ -181,7 +180,7 @@ export function RetroCameraScreen() {
     return <SafeAreaView style={[s.root, retro && { backgroundColor: '#2b241d' }]}><StatusBar barStyle="light-content" backgroundColor={retro ? '#2b241d' : '#11151d'}/>
   <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
   <View style={s.header}><Image source={require('../../assets/brand/icon.png')} style={s.logo}/><View style={{ flex: 1 }}><Text style={s.brand}>YAi <Text style={{ color: accent }}>RETRO</Text></Text><Text style={s.subBrand}>{retro ? 'ПЛЁНКА · КАССЕТА · МОМЕНТ' : 'Сохраняй моменты по-своему'}</Text></View><TouchableOpacity disabled={locked} onPress={() => setSettingsOpen(true)}><Text style={s.headerAction}>Настройки</Text></TouchableOpacity></View>
-  <View style={s.modeBar}><Choice label="Фото" selected={mode === 'photo'} disabled={locked} onPress={() => modeChange('photo')}/><Choice label="Видео" selected={mode === 'video'} disabled={locked} onPress={() => modeChange('video')}/><View style={{ flex: 1 }}/><TouchableOpacity disabled={locked} onPress={() => { session.onCameraReady(false); update({ position: settings.position === 'back' ? 'front' : 'back' }); }}><Text style={s.headerAction}>↻ Камера</Text></TouchableOpacity></View>
+  <View style={s.modeBar}><Choice label="Фото" selected={mode === 'photo'} disabled={locked} onPress={() => modeChange('photo')}/><Choice label="Видео" selected={mode === 'video'} disabled={locked} onPress={() => modeChange('video')}/><View style={{ flex: 1 }}/><TouchableOpacity disabled={locked} onPress={() => {  update({ position: settings.position === 'back' ? 'front' : 'back' }); }}><Text style={s.headerAction}>↻ Камера</Text></TouchableOpacity></View>
   <View style={[s.viewfinder, retro && s.retroFinder]}>
    <RetroCameraPreview key={cameraGeneration} cameraProfile={profile} cameraRef={cameraRef} isActive={session.foreground && (!busy || busy.startsWith('Снимаем') || busy.startsWith('Фотобудка')) && session.state !== 'exporting'} onReady={session.onCameraReady} onError={session.onCameraError} quality={settings.quality} position={settings.position} mode={mode} audio={settings.audioMode !== 'mute'} onFormat={onFormat}/>
    <View pointerEvents="none" style={s.topOverlay}><Text style={s.finderTag}>{selectedCamera.name}</Text><Text style={[s.finderTag, recording && { color: '#ff625f' }]}>{recording ? '● REC ' : mode === 'photo' ? 'ФОТО ' : 'ВИДЕО '}{recording ? time(session.currentRecordingTimeMs) : ''}</Text></View>
