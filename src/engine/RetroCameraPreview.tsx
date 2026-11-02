@@ -23,7 +23,9 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
   const format = useCameraFormat(device?.formats.length?device:undefined, [{videoResolution: {width, height:width*9/16}}, {fps: 30},{photoResolution:'max'}]);
   const [permission, setPermission] = useState<boolean | null>(null);
   const [permissionError, setPermissionError] = useState('');
-  const configurationKey=[device?.id,mode,format?.videoWidth,format?.videoHeight,format?.photoWidth,format?.photoHeight].join(':');
+  const [compatiblePreview,setCompatiblePreview]=useState(false);
+  useEffect(()=>{setCompatiblePreview(false)},[mode,quality,position]);
+  const configurationKey=[device?.id,mode,format?.videoWidth,format?.videoHeight,format?.photoWidth,format?.photoHeight,compatiblePreview?'native':'skia'].join(':');
   const [initializedFor,setInitializedFor]=useState('');
   const paintAndBuilder = useMemo(() => {
     const effect = Skia.RuntimeEffect.Make(WARM_FILM_SKSL_SHADER);
@@ -67,11 +69,21 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
   </View>;
   if (!device) return <View style={styles.center}><Text style={styles.text}>Подходящая камера не найдена.</Text></View>;
   if(mode==='video'&&!format)return <View style={styles.center}><Text style={styles.text}>Эта камера не предоставляет поддерживаемые видеорежимы. Переключите камеру или выберите «Фото».</Text></View>;
-  return <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format}
+  return <><Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format}
     fps={format?Math.max(format.minFps, Math.min(30, format.maxFps)):undefined} videoHdr={false} photoHdr={false}
-    isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={processor} pixelFormat="yuv" outputOrientation="preview" resizeMode="contain"
+    isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={compatiblePreview?undefined:processor} pixelFormat="yuv" outputOrientation="preview" resizeMode="contain"
     videoBitRate={quality==='4k'?40:quality==='1080'?18:8}
-    onInitialized={() => setInitializedFor(configurationKey)} onStarted={()=>setInitializedFor(configurationKey)} onError={error => {setInitializedFor(''); onError(error);}} />;
+    onInitialized={() => setInitializedFor(configurationKey)} onStarted={()=>setInitializedFor(configurationKey)} onError={error => {
+      setInitializedFor('');
+      if(mode==='video'&&!compatiblePreview&&/No supported surface combination|too many use cases/i.test(error.message)){
+        setCompatiblePreview(true);return;
+      }
+      onError(error);
+    }} />
+    {compatiblePreview&&<View pointerEvents="none" style={styles.compatibility}><Text style={styles.compatibilityText}>Эффект — при сохранении · совместимый режим камеры</Text></View>}
+  </>;
 }
 const styles = StyleSheet.create({center:{flex:1,alignItems:'center',justifyContent:'center',padding:24,backgroundColor:'#111'},
-  text:{color:'#eee',textAlign:'center',margin:12},action:{color:'#ffb300',padding:12}});
+  text:{color:'#eee',textAlign:'center',margin:12},action:{color:'#ffb300',padding:12},
+  compatibility:{position:'absolute',top:52,left:12,right:12,backgroundColor:'#151515bf',borderRadius:7,padding:7},
+  compatibilityText:{color:'#f0d0a5',fontSize:10,textAlign:'center'}});

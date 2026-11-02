@@ -82,3 +82,32 @@ const flexibleQuality='QualitySelector.from(targetQuality, FallbackStrategy.high
 const exactQuality='QualitySelector.from(targetQuality)';
 if(deviceFormat.includes(flexibleQuality))fs.writeFileSync(formatFile,deviceFormat.replace(flexibleQuality,exactQuality));
 else if(!deviceFormat.includes(exactQuality))throw Error('Review exact recording quality patch');
+
+// The native compatibility preview uses a display-sized PRIVATE stream too.
+configuration=fs.readFileSync(configurationFile,'utf8').replace(/\r\n/g,'\n');
+if(!configuration.includes('// YAi: bound native preview to the display.')){
+  const point=configuration.indexOf('        val targetSize = if (videoConfig != null) format.videoSize else format.photoSize');
+  const start=configuration.indexOf('        val resolutionSelector = ResolutionSelector.Builder()',point);
+  const end=configuration.indexOf('        preview.setResolutionSelector(resolutionSelector)',start);
+  if(point<0||start<0||end<0)throw Error('Review native preview resolution patch');
+  const replacement=`        // YAi: bound native preview to the display.
+        val displaySize = android.graphics.Point()
+        val windows = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        windows.defaultDisplay.getRealSize(displaySize)
+        val previewArea = maxOf(640L * 480, minOf(1920L * 1080, displaySize.x.toLong() * displaySize.y))
+        val resolutionSelector = ResolutionSelector.Builder()
+          .forSize(targetSize)
+          .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
+          .setResolutionFilter { sizes, _ ->
+            sizes.filter { it.width.toLong() * it.height <= previewArea }
+              .sortedWith(compareBy<android.util.Size>(
+                { kotlin.math.abs(it.width.toDouble() / it.height - targetSize.width.toDouble() / targetSize.height) },
+                { kotlin.math.abs(it.width.toLong() * it.height - targetSize.width.toLong() * targetSize.height) }
+              ))
+              .ifEmpty { sizes.sortedBy { it.width.toLong() * it.height }.take(1) }
+          }
+          .build()
+`;
+  configuration=configuration.slice(0,start)+replacement+configuration.slice(end);
+  fs.writeFileSync(configurationFile,configuration);
+}
