@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Camera, useCameraFormat, useSkiaFrameProcessor } from 'react-native-vision-camera';
 import {useCameraHardware} from '../features/useCameraHardware';
@@ -24,6 +24,7 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
   const [permission, setPermission] = useState<{camera:boolean;microphone:boolean} | null>(null);
   const permitted=permission?.camera===true&&(!audio||mode==='photo'||permission.microphone);
   const [permissionError, setPermissionError] = useState('');
+  const askedCamera=useRef(false),askedMicrophone=useRef(false);
   const [compatiblePreview,setCompatiblePreview]=useState(false);
   useEffect(()=>{setCompatiblePreview(false)},[mode,quality,position]);
   const configurationKey=[device?.id,mode,format?.videoWidth,format?.videoHeight,format?.photoWidth,format?.photoHeight,compatiblePreview?'native':'skia'].join(':');
@@ -49,17 +50,23 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
 
   useEffect(() => {
     let alive = true;
-    const request = async () => {
+    const request = async (prompt:boolean) => {
       try {
         let camera = Camera.getCameraPermissionStatus();
         let microphone = Camera.getMicrophonePermissionStatus();
-        if (camera === 'not-determined') camera = await Camera.requestCameraPermission();
-        if (audio && mode==='video' && microphone === 'not-determined') microphone = await Camera.requestMicrophonePermission();
+        // Android reports an unasked permission as denied, too. Prompt once;
+        // foreground events only refresh status, so denial cannot loop dialogs.
+        if (camera !== 'granted' && prompt && !askedCamera.current) {
+          askedCamera.current=true;camera=await Camera.requestCameraPermission();
+        }
+        if (audio && mode==='video' && microphone !== 'granted' && prompt && !askedMicrophone.current) {
+          askedMicrophone.current=true;microphone=await Camera.requestMicrophonePermission();
+        }
         if (alive) setPermission({camera:camera==='granted',microphone:microphone==='granted'});
       } catch (e) { if (alive) {setPermission({camera:false,microphone:false}); setPermissionError(String(e));} }
     };
-    void request();
-    const subscription = AppState.addEventListener('change', state => {if (state === 'active') void request();});
+    void request(true);
+    const subscription = AppState.addEventListener('change', state => {if (state === 'active') void request(false);});
     return () => { alive = false; subscription.remove(); };
   }, [audio,mode]);
   useEffect(()=>{if(format)onFormat?.(mode==='photo'?format.photoWidth:format.videoWidth,mode==='photo'?format.photoHeight:format.videoHeight);else onFormat?.(0,0)},[format,mode,onFormat]);

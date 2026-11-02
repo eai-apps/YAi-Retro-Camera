@@ -62,7 +62,21 @@ def shot(name):
     (OUT / f'{name}.png').write_bytes(adb('exec-out', 'screencap', '-p'))
     ET.ElementTree(window()).write(OUT / f'{name}.xml', encoding='utf-8')
 
+def grant_permission(label):
+    for _ in range(20):
+        buttons=[n for n in window().iter('node') if n.get('enabled')=='true' and n.get('resource-id','').split('/')[-1]
+                 in ('permission_allow_foreground_only_button','permission_allow_button')]
+        if buttons:
+            coords=list(map(int,re.findall(r'-?\d+',buttons[0].get('bounds',''))))
+            assert len(coords)==4, f'{label} permission control has no bounds'
+            adb('shell','input','tap',str((coords[0]+coords[2])//2),str((coords[1]+coords[3])//2))
+            break
+        time.sleep(.5)
+    else:
+        raise AssertionError(f'No first-use Android permission dialog: {label}')
+
 try:
+    grant_permission('camera')
     wait_text('Сделать фото', timeout=60)
     # Capture is enabled only after native camera readiness.
     for _ in range(40):
@@ -92,17 +106,7 @@ try:
     # Photo does not need the microphone. The first live-video switch must wait
     # for the user's runtime grant before binding CameraX's audio use case.
     tap('Видео')
-    for _ in range(20):
-        buttons=[n for n in window().iter('node') if n.get('resource-id','').split('/')[-1]
-                 in ('permission_allow_foreground_only_button','permission_allow_button')]
-        if buttons:
-            coords=list(map(int,re.findall(r'-?\d+',buttons[0].get('bounds',''))))
-            assert len(coords)==4, 'Microphone permission control has no bounds'
-            adb('shell','input','tap',str((coords[0]+coords[2])//2),str((coords[1]+coords[3])//2))
-            break
-        time.sleep(.5)
-    else:
-        raise AssertionError('First live-video switch did not request microphone permission')
+    grant_permission('microphone')
     for _ in range(30):
         if any(n.get('enabled')=='true' for n in nodes('Начать запись')):
             break

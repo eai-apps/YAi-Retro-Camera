@@ -14,7 +14,9 @@ module.exports=function(config){
   });
   config=withAndroidManifest(config,result=>{
     const permissions=result.modResults.manifest['uses-permission']??[];
-    result.modResults.manifest['uses-permission']=permissions.filter(p=>!['android.permission.WRITE_EXTERNAL_STORAGE','android.permission.READ_EXTERNAL_STORAGE'].includes(p.$['android:name']));
+    // Keep Expo's tools:node="remove" directives: dropping those allows AARs
+    // to reintroduce legacy storage permissions during Android manifest merging.
+    result.modResults.manifest['uses-permission']=permissions.filter(p=>p.$['tools:node']==='remove'||!['android.permission.WRITE_EXTERNAL_STORAGE','android.permission.READ_EXTERNAL_STORAGE'].includes(p.$['android:name']));
     return result;
   });
   return withGradleProperties(config,result=>{
