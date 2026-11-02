@@ -58,6 +58,7 @@ def tap(label, last=False):
     raise AssertionError(f'No enabled control: {label}')
 
 def shot(name):
+    print(f'APK UI checkpoint: {name}', flush=True)
     (OUT / f'{name}.png').write_bytes(adb('exec-out', 'screencap', '-p'))
     ET.ElementTree(window()).write(OUT / f'{name}.xml', encoding='utf-8')
 
@@ -120,5 +121,8 @@ try:
         tap('Готово')
     print('APK UI: photo capture/save/gallery deletion/settings/theme passed; API29+ also recorded two video clips, deleted one and exported the survivor.')
 finally:
-    (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d'))
-    shot('last-state')
+    try:
+        (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d'))
+        shot('last-state')
+    except subprocess.SubprocessError as error:
+        print(f'Android diagnostics unavailable: {error}', flush=True)
