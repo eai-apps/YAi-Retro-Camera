@@ -32,3 +32,33 @@ if(!code.includes('fun getCurrentDevices(')){
   const method='  @ReactMethod\n  fun getCurrentDevices(promise: com.facebook.react.bridge.Promise) {\n    coroutineScope.launch { promise.resolve(getDevicesJson()) }\n  }\n\n';
   fs.writeFileSync(file,code.replace(point,method+point));
 }
+
+// Bound only the analysis/preview stream to the screen's preview budget.
+// Recording retains the selected resolution. Two maximum-size camera streams
+// cannot be combined on many devices (and on small-screen emulators).
+const configurationFile=path.join(root,'android/src/main/java/com/mrousavy/camera/core/CameraSession+Configuration.kt');
+let configuration=fs.readFileSync(configurationFile,'utf8').replace(/\r\n/g,'\n');
+if(!configuration.includes('// YAi: bound analysis to the display preview budget.')){
+  const marker='        Log.i(CameraSession.TAG, "Frame Processor size: ${format.videoSize}")';
+  const start=configuration.indexOf(marker);
+  if(start<0)throw Error('Review frame analysis resolution patch');
+  const end=configuration.indexOf('        analysis.setResolutionSelector(resolutionSelector)',start);
+  if(end<0)throw Error('Missing analysis resolution selector');
+  const replacement=`        // YAi: bound analysis to the display preview budget.
+        val displaySize = android.graphics.Point()
+        val windows = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        windows.defaultDisplay.getRealSize(displaySize)
+        val previewArea = maxOf(640L * 480, minOf(1920L * 1080, displaySize.x.toLong() * displaySize.y))
+        Log.i(CameraSession.TAG, "Frame Processor preview pixel budget: $previewArea")
+        val resolutionSelector = ResolutionSelector.Builder()
+          .forSize(format.videoSize)
+          .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
+          .setResolutionFilter { sizes, _ ->
+            sizes.filter { it.width.toLong() * it.height <= previewArea }
+              .ifEmpty { sizes.sortedBy { it.width.toLong() * it.height }.take(1) }
+          }
+          .build()
+`;
+  configuration=configuration.slice(0,start)+replacement+configuration.slice(end);
+  fs.writeFileSync(configurationFile,configuration);
+}
