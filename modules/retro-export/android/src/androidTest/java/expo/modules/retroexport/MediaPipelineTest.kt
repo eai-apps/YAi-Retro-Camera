@@ -27,7 +27,10 @@ class MediaPipelineTest {
     private val context=instrumentation.targetContext
     private val files=MediaFiles(context)
     private val created=mutableListOf<Uri>()
-    @Before fun permissions(){if(Build.VERSION.SDK_INT<=28)for(permission in listOf(Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.WRITE_EXTERNAL_STORAGE))instrumentation.uiAutomation.grantRuntimePermission(context.packageName,permission)}
+    @Before fun permissions(){if(Build.VERSION.SDK_INT<=28)for(permission in listOf(Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.WRITE_EXTERNAL_STORAGE)){
+        val result=android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("pm grant ${context.packageName} $permission")).bufferedReader().use{it.readText()}
+        check(result.isBlank()){ "Cannot grant legacy test storage permission: $result" }
+    }}
     @After fun cleanup(){created.forEach{context.contentResolver.delete(it,null,null)}}
     private fun photo():String {val file=File(File(files.root,"photos").apply{mkdirs()},"native-test.jpg");val bitmap=Bitmap.createBitmap(240,180,Bitmap.Config.ARGB_8888)
         val pixels=IntArray(240*180){i->Color.rgb(70+i%240/2,100,120)};bitmap.setPixels(pixels,0,240,0,0,240,180);file.outputStream().use{bitmap.compress(Bitmap.CompressFormat.JPEG,95,it)};bitmap.recycle();return Uri.fromFile(file).toString()}
