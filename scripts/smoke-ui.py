@@ -14,9 +14,14 @@ def adb(*args):
 def window():
     for _ in range(3):
         try:
-            adb('shell', 'uiautomator', 'dump', '/sdcard/retro-window.xml')
-            return ET.fromstring(adb('shell', 'cat', '/sdcard/retro-window.xml'))
-        except (ET.ParseError, subprocess.SubprocessError):
+            result=adb('shell','am','instrument','-w','-e','class',
+                       'expo.modules.retroexport.FastDumpTest',
+                       'expo.modules.retroexport.test/androidx.test.runner.AndroidJUnitRunner').decode('utf-8')
+            match=re.search(r'INSTRUMENTATION_STATUS: xml=(.*?)(?:\r?\nINSTRUMENTATION_|\Z)',result,re.S)
+            if not match:
+                raise ValueError('No UI snapshot returned by Android test helper')
+            return ET.fromstring(match.group(1).strip())
+        except (ET.ParseError, subprocess.SubprocessError, ValueError):
             time.sleep(1)
     raise AssertionError('Cannot inspect Android UI')
 

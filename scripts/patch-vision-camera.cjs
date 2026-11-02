@@ -62,3 +62,15 @@ if(!configuration.includes('// YAi: bound analysis to the display preview budget
   configuration=configuration.slice(0,start)+replacement+configuration.slice(end);
   fs.writeFileSync(configurationFile,configuration);
 }
+
+// Keep the requested aspect ratio's priority within the preview budget.
+configuration=fs.readFileSync(configurationFile,'utf8').replace(/\r\n/g,'\n');
+const unranked='            sizes.filter { it.width.toLong() * it.height <= previewArea }\n              .ifEmpty';
+const ranked=`            sizes.filter { it.width.toLong() * it.height <= previewArea }
+              .sortedWith(compareBy<android.util.Size>(
+                { kotlin.math.abs(it.width.toDouble() / it.height - format.videoSize.width.toDouble() / format.videoSize.height) },
+                { kotlin.math.abs(it.width.toLong() * it.height - format.videoSize.width.toLong() * format.videoSize.height) }
+              ))
+              .ifEmpty`;
+if(configuration.includes(unranked))fs.writeFileSync(configurationFile,configuration.replace(unranked,ranked));
+else if(!configuration.includes('sortedWith(compareBy<android.util.Size>'))throw Error('Review preview aspect ratio ranking patch');

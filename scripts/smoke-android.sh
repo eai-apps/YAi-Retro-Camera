@@ -2,6 +2,9 @@
 set -euo pipefail
 mkdir -p smoke-output
 adb install -r release-apk/YAi-Retro-Camera-0.2.0.apk
+helper=$(find ui-dump-helper -name '*.apk' -print -quit)
+test -n "$helper"
+adb install -r "$helper"
 adb shell pm grant com.eai.retrocamera android.permission.CAMERA
 adb shell pm grant com.eai.retrocamera android.permission.RECORD_AUDIO
 if [ "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" -le 28 ]; then
@@ -18,8 +21,7 @@ app_pid=$(adb shell pidof com.eai.retrocamera | tr -d '\r')
 adb logcat -d --pid="$app_pid" > smoke-output/app-logcat.txt
 adb logcat -d > smoke-output/logcat.txt
 adb exec-out screencap -p > smoke-output/screen.png
-adb shell uiautomator dump /sdcard/retro-window.xml
-adb pull /sdcard/retro-window.xml smoke-output/window.xml
+cp smoke-output/last-state.xml smoke-output/window.xml
 if grep -E 'FATAL EXCEPTION|JavascriptException|Unable to load script|ReanimatedError|WorkletsError' smoke-output/app-logcat.txt; then
   exit 1
 fi

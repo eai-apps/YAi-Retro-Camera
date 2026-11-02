@@ -84,7 +84,13 @@ jobs:
           arch: x86_64
           ram-size: 2048M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
-          script: cd android && ./gradlew :retro-export:connectedDebugAndroidTest --no-daemon --max-workers=2 -PreactNativeArchitectures=x86_64 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g
+          script: cd android && ./gradlew :retro-export:connectedDebugAndroidTest --no-daemon --max-workers=2 -PreactNativeArchitectures=x86_64 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g -Pandroid.testInstrumentationRunnerArguments.class=expo.modules.retroexport.MediaPipelineTest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-dump-helper-${{ matrix.api }}
+          path: modules/retro-export/android/build/outputs/apk/androidTest/debug/*.apk
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -95,7 +101,7 @@ jobs:
 
   smoke:
     name: App launch · Android API ${{ matrix.api }}
-    needs: build
+    needs: [build, native]
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
@@ -109,6 +115,8 @@ jobs:
         with: {cmdline-tools-version: '12266719', log-accepted-android-sdk-licenses: false}
       - uses: actions/download-artifact@v4
         with: {name: 'YAi-Retro-Camera-${{ github.run_number }}', path: release-apk}
+      - uses: actions/download-artifact@v4
+        with: {name: 'ui-dump-helper-28', path: ui-dump-helper}
       - run: sudo chmod 666 /dev/kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
