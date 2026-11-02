@@ -4,6 +4,8 @@ import { Camera, useCameraDevice, useCameraFormat, useSkiaFrameProcessor } from 
 import { Skia } from '@shopify/react-native-skia';
 import { CameraProfile } from '../cameras/types';
 import { WARM_FILM_SKSL_SHADER } from './RetroSkiaShader';
+import { effectKeys } from './effect';
+import { Quality } from '../features/settings';
 
 interface Props {
   cameraProfile: CameraProfile;
@@ -11,10 +13,13 @@ interface Props {
   isActive: boolean;
   onReady: (ready: boolean) => void;
   onError: (error: Error) => void;
+  quality?:Quality;position?:'front'|'back';mode?:'photo'|'video';audio?:boolean;
+  onFormat?:(width:number,height:number)=>void;
 }
-export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady, onError }: Props) {
-  const device = useCameraDevice('back');
-  const format = useCameraFormat(device, [{videoResolution: {width: 1280, height: 720}}, {fps: 30}]);
+export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady, onError,quality='1080',position='back',mode='video',audio=true,onFormat }: Props) {
+  const device = useCameraDevice(position);
+  const width=quality==='4k'?3840:quality==='720'?1280:1920;
+  const format = useCameraFormat(device, [{videoResolution: {width, height:width*9/16}}, {fps: 30},{photoResolution:'max'}]);
   const [permission, setPermission] = useState<boolean | null>(null);
   const [permissionError, setPermissionError] = useState('');
   const [initialized, setInitialized] = useState(false);
@@ -23,14 +28,14 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
     if (!effect) throw new Error('Не удалось создать эффект камеры');
     const builder = Skia.RuntimeShaderBuilder(effect);
     const f = cameraProfile.filterConfig;
-    for (const [name, value] of Object.entries({Warmth:f.warmth, Contrast:f.contrast, Saturation:f.saturation,
-      GrainIntensity:f.grainIntensity, GrainScale:f.grainScale, GrainSpeed:f.grainSpeed})) builder.setUniform('u' + name, [value]);
+    for(const name of effectKeys)builder.setUniform('u'+name[0].toUpperCase()+name.slice(1),[Number(f[name])]);
     return {builder, paint: Skia.Paint()};
   }, [cameraProfile]);
   const {builder, paint} = paintAndBuilder;
   const processor = useSkiaFrameProcessor(frame => {
     'worklet';
     builder.setUniform('uTime', [(frame.timestamp / 1e9) % 4096]);
+    builder.setUniform('uResolution',[frame.width,frame.height]);
     // Runtime image filters use the input frame as their child shader.
     paint.setImageFilter(Skia.ImageFilter.MakeRuntimeShader(builder, 'image', null));
     frame.render(paint);
@@ -43,25 +48,27 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
         let camera = Camera.getCameraPermissionStatus();
         let microphone = Camera.getMicrophonePermissionStatus();
         if (camera === 'not-determined') camera = await Camera.requestCameraPermission();
-        if (microphone === 'not-determined') microphone = await Camera.requestMicrophonePermission();
-        if (alive) setPermission(camera === 'granted' && microphone === 'granted');
+        if (audio && mode==='video' && microphone === 'not-determined') microphone = await Camera.requestMicrophonePermission();
+        if (alive) setPermission(camera === 'granted' && (!audio||mode==='photo'||microphone === 'granted'));
       } catch (e) { if (alive) {setPermission(false); setPermissionError(String(e));} }
     };
     void request();
     const subscription = AppState.addEventListener('change', state => {if (state === 'active') void request();});
     return () => { alive = false; subscription.remove(); };
-  }, []);
+  }, [audio,mode]);
+  useEffect(()=>{if(format)onFormat?.(mode==='photo'?format.photoWidth:format.videoWidth,mode==='photo'?format.photoHeight:format.videoHeight)},[format,mode,onFormat]);
   useEffect(() => { onReady(permission === true && initialized && isActive); }, [permission, initialized, isActive, onReady]);
   if (permission === null) return <View style={styles.center}><ActivityIndicator /><Text style={styles.text}>Проверка камеры и микрофона…</Text></View>;
   if (!permission) return <View style={styles.center}>
     <Text style={styles.text}>Для записи со звуком разрешите камеру и микрофон в настройках приложения.{permissionError}</Text>
     <TouchableOpacity onPress={() => void Linking.openSettings()}><Text style={styles.action}>Открыть настройки</Text></TouchableOpacity>
   </View>;
-  if (!device || !format) return <View style={styles.center}><Text style={styles.text}>Подходящая задняя камера не найдена.</Text></View>;
+  if (!device || !format) return <View style={styles.center}><Text style={styles.text}>Подходящая камера не найдена.</Text></View>;
   return <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format}
     fps={Math.max(format.minFps, Math.min(30, format.maxFps))} videoHdr={false} photoHdr={false}
-    isActive={isActive} video audio frameProcessor={processor} pixelFormat="yuv" outputOrientation="preview"
-    onInitialized={() => setInitialized(true)} onError={error => {setInitialized(false); onError(error);}} />;
+    isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={processor} pixelFormat="yuv" outputOrientation="preview"
+    videoBitRate={quality==='4k'?40:quality==='1080'?18:8}
+    onInitialized={() => setInitialized(true)} onStarted={()=>setInitialized(true)} onStopped={()=>setInitialized(false)} onError={error => {setInitialized(false); onError(error);}} />;
 }
 const styles = StyleSheet.create({center:{flex:1,alignItems:'center',justifyContent:'center',padding:24,backgroundColor:'#111'},
   text:{color:'#eee',textAlign:'center',margin:12},action:{color:'#ffb300',padding:12}});

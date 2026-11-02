@@ -21,3 +21,5 @@
 Android/Expo-шаблон: официальный `expo-template-bare-minimum` SDK 52, MIT. JDK/SDK/NDK — инструменты сборки, не сторонний видеосервис. Полный npm-граф зафиксирован в package-lock.json. Dev-инструменты Jest, ts-jest, TypeScript, Babel — по лицензиям их пакетов; их код не добавляется в runtime приложения как продуктовая функция.
 
 FFmpeg/FFmpegKit, GPL-код, платные SDK и закрытый код Blackmagic Camera не добавлялись. Это реестр используемых компонентов, а не утверждение о проведённой юридической экспертизе всех транзитивных пакетов. При добавлении ресурса обязательно записывать отдельные источник, лицензию и условия атрибуции.
+
+Версия 0.2.0: собственные пятиузловые тональные кривые/LUT, процедурные пыль/царапины/засветки/рамки и иконка scripts/generate-icon.cjs; внешних изображений/звуков нет. expo-image-picker 16.0.6 — MIT (https://github.com/expo/expo/tree/sdk-52/packages/expo-image-picker); @react-native-community/slider 4.5.5 — MIT (https://github.com/callstack/react-native-slider); AndroidX ExifInterface 1.3.7 — Apache-2.0. ffmpeg используется только инструментом CI для синтетических тестовых файлов; в APK/исходники библиотеки ffmpeg не включены.

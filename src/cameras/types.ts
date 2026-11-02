@@ -5,6 +5,7 @@
 export type CameraCaptureMode = 'video' | 'photo';
 
 export interface CameraFilterConfig {
+  [key: string]: number | undefined;
   /** Уровень тепла (0.0 = нейтральный, 1.0 = выраженная тёплая плёнка) */
   warmth: number;
   /** Коэффициент контрастности (1.0 = нейтральный, > 1.0 = усиленный контраст) */
@@ -20,6 +21,7 @@ export interface CameraFilterConfig {
 }
 
 export interface CameraProfile {
+  accent?: string;
   id: string;
   name: string;
   description: string;

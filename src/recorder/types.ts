@@ -11,6 +11,10 @@ export type RecordingState =
   | 'error';
 
 export interface RecordedChunk {
+  thumbnailUri?:string;
+  hasAudio?:boolean;
+  width?:number;
+  height?:number;
   id: string;
   uri: string;
   durationMs: number;

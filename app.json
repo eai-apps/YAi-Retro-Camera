@@ -2,7 +2,7 @@
   "expo": {
     "name": "YAi Retro Camera",
     "slug": "yai-retro-camera",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "splash": {
       "backgroundColor": "#121212"
@@ -15,15 +15,14 @@
       "package": "com.eai.retrocamera",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#121212"
+        "foregroundImage": "./assets/brand/adaptive.png",
+        "backgroundColor": "#14171e"
       },
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
       "blockedPermissions": [
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO",
@@ -41,8 +40,17 @@
           "microphonePermissionText": "YAi Retro Camera требует доступ к микрофону для записи звука видеороликов."
         }
       ],
-      "./plugins/withStageZeroAndroid"
+      "./plugins/withStageZeroAndroid",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": false,
+          "cameraPermission": "Доступ к камере для фото и видео.",
+          "microphonePermission": "Доступ к микрофону для звука видео."
+        }
+      ]
     ],
-    "newArchEnabled": false
+    "newArchEnabled": false,
+    "icon": "./assets/brand/icon.png"
   }
 }

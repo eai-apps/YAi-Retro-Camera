@@ -1,3 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="expo.modules.retroexport">
+    >
+    <application><provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.retro.files" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/retro_file_paths"/></provider></application>
 </manifest>

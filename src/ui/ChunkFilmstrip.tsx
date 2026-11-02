@@ -1,112 +1,16 @@
 import React from 'react';
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
-import { RecordedChunk } from '../recorder/types';
-
-interface ChunkFilmstripProps {
-  chunks: RecordedChunk[];
+import {FlatList,Image,StyleSheet,Text,TouchableOpacity,View} from 'react-native';
+import {RecordedChunk} from '../recorder/types';
+export function ChunkFilmstrip({chunks,disabled,onOpen,onDelete,onMove}:{chunks:RecordedChunk[];disabled?:boolean;onOpen:(c:RecordedChunk)=>void;onDelete:(c:RecordedChunk)=>void;onMove:(id:string,direction:number)=>void}){
+  if(!chunks.length)return <Text style={s.empty}>Запиши первый кусок. Пауза сохранит его в ленту.</Text>;
+  return <FlatList horizontal data={chunks} keyExtractor={c=>c.id} contentContainerStyle={s.list} showsHorizontalScrollIndicator={false}
+    renderItem={({item,index})=><View style={s.card}><TouchableOpacity disabled={disabled} onPress={()=>onOpen(item)}>
+      {item.thumbnailUri?<Image source={{uri:item.thumbnailUri}} style={s.thumb}/>:<View style={[s.thumb,s.blank]}><Text style={s.label}>▶</Text></View>}
+      <Text style={s.label}>#{index+1} · {(item.durationMs/1000).toFixed(1)} с {item.hasAudio===false?' · без звука':''}</Text>
+    </TouchableOpacity><View style={s.actions}>
+      <TouchableOpacity accessibilityLabel="Передвинуть кусок влево" disabled={disabled||index===0} onPress={()=>onMove(item.id,-1)}><Text style={s.action}>←</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityLabel="Удалить кусок" disabled={disabled} onPress={()=>onDelete(item)}><Text style={s.remove}>Удалить</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityLabel="Передвинуть кусок вправо" disabled={disabled||index===chunks.length-1} onPress={()=>onMove(item.id,1)}><Text style={s.action}>→</Text></TouchableOpacity>
+    </View></View>}/>;
 }
-
-export const ChunkFilmstrip: React.FC<ChunkFilmstripProps> = ({ chunks }) => {
-  if (chunks.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Лента пуста. Нажмите «ЗАПИСЬ» для первого куска</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {chunks.map((chunk, index) => {
-          const durationSec = (chunk.durationMs / 1000).toFixed(1);
-          return (
-            <View key={chunk.id} style={styles.filmFrame}>
-              {/* Верхняя перфорация плёнки */}
-              <View style={styles.perforationRow}>
-                <View style={styles.perforationHole} />
-                <View style={styles.perforationHole} />
-                <View style={styles.perforationHole} />
-              </View>
-
-              {/* Тело кадра */}
-              <View style={styles.frameBody}>
-                <Text style={styles.frameNumber}>#{index + 1}</Text>
-                <Text style={styles.frameDuration}>{durationSec} с</Text>
-              </View>
-
-              {/* Нижняя перфорация плёнки */}
-              <View style={styles.perforationRow}>
-                <View style={styles.perforationHole} />
-                <View style={styles.perforationHole} />
-                <View style={styles.perforationHole} />
-              </View>
-            </View>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    height: 72,
-    backgroundColor: '#181818',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#333',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    paddingHorizontal: 12,
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    height: 60,
-    backgroundColor: '#141414',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: '#777',
-    fontSize: 13,
-  },
-  filmFrame: {
-    width: 80,
-    height: 56,
-    backgroundColor: '#0a0a0a',
-    marginRight: 8,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#ffb300',
-    overflow: 'hidden',
-    justifyContent: 'space-between',
-  },
-  perforationRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 2,
-    backgroundColor: '#000',
-  },
-  perforationHole: {
-    width: 6,
-    height: 4,
-    backgroundColor: '#333',
-    borderRadius: 1,
-  },
-  frameBody: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  frameNumber: {
-    color: '#ffb300',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  frameDuration: {
-    color: '#fff',
-    fontSize: 11,
-  },
-});
+const s=StyleSheet.create({empty:{color:'#a0a4ae',padding:14,textAlign:'center',fontSize:12},list:{paddingHorizontal:14,gap:10},card:{width:134,backgroundColor:'#252a35',borderRadius:12,overflow:'hidden'},thumb:{width:134,height:68},blank:{alignItems:'center',justifyContent:'center'},label:{fontSize:11,color:'#eee',padding:5},actions:{flexDirection:'row',justifyContent:'space-around',alignItems:'center'},action:{color:'#ddd',padding:8},remove:{color:'#ff9f95',fontSize:11,paddingVertical:8}});

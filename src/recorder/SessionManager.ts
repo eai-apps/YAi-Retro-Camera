@@ -2,15 +2,16 @@ import { RecordingState, RecordedChunk, SessionCatalog, ExportResult } from './t
 import { CameraProfile } from '../cameras/types';
 
 export interface StorageAdapter {
+  deleteFile?(uri:string):Promise<void>;
   saveSession(catalog: SessionCatalog): Promise<void>;
   loadSession(sessionId: string): Promise<SessionCatalog | null>;
   loadCurrentSession?(): Promise<SessionCatalog | null>;
-  verifyFile(uri: string): Promise<{exists: boolean; sizeBytes: number; durationMs?: number}>;
+  verifyFile(uri: string): Promise<{exists: boolean; sizeBytes: number; durationMs?: number;thumbnailUri?:string;hasAudio?:boolean}>;
 }
 export interface NativeExporterAdapter {
   exportChunks(options: {inputUris: string[]; filterConfig: CameraProfile['filterConfig']; saveToGallery: boolean}): Promise<ExportResult>;
 }
-export interface FinalizedVideo {uri: string; durationMs: number; sizeBytes: number}
+export interface FinalizedVideo {uri: string; durationMs: number; sizeBytes: number;thumbnailUri?:string;hasAudio?:boolean;width?:number;height?:number}
 export interface CameraDriver {startRecording(): Promise<void>; stopRecording(): Promise<FinalizedVideo>; isRecording?(): boolean}
 const message = (e: unknown) => e instanceof Error ? e.message : String(e);
 
@@ -54,7 +55,7 @@ export class SessionManager {
         for (const chunk of catalog.chunks) {
           const check = await this.storage!.verifyFile(chunk.uri);
           if (check.exists && check.sizeBytes > 0 && (check.durationMs ?? chunk.durationMs) > 0) {
-            valid.push({...chunk, fileSizeBytes:check.sizeBytes, durationMs:check.durationMs ?? chunk.durationMs});
+            valid.push({...chunk, fileSizeBytes:check.sizeBytes, durationMs:check.durationMs ?? chunk.durationMs,thumbnailUri:check.thumbnailUri??chunk.thumbnailUri,hasAudio:check.hasAudio??chunk.hasAudio});
           }
         }
         this.currentSessionId = catalog.sessionId; this.createdAt = catalog.createdAt; this.chunks = valid;
@@ -109,7 +110,7 @@ export class SessionManager {
       throw new Error('Файл куска пуст, не завершён или имеет некорректную длительность');
     }
     if (this.chunks.some(c => c.uri === video.uri)) throw new Error('Повторное завершение одного куска');
-    this.chunks.push({id:`chunk_${Date.now()}_${this.chunks.length}`, uri:video.uri,
+    this.chunks.push({...video,id:`chunk_${Date.now()}_${this.chunks.length}`, uri:video.uri,
       durationMs:duration, fileSizeBytes:check.sizeBytes, createdAt:Date.now()});
     await this.persist(); // Keep the in-memory chunk if persistence fails; never pretend it was saved.
   }
@@ -144,12 +145,30 @@ export class SessionManager {
   exportCatalog(): SessionCatalog {return {sessionId:this.currentSessionId, createdAt:this.createdAt, cameraProfileId:this.cameraProfile.id, chunks:this.getChunks(), totalDurationMs:this.getTotalDurationMs()};}
   private validCatalog(c: SessionCatalog): boolean {
     return !!c && typeof c.sessionId === 'string' && /^[A-Za-z0-9_-]{1,120}$/.test(c.sessionId) && Number.isFinite(c.createdAt)
-      && c.cameraProfileId === this.cameraProfile.id && Array.isArray(c.chunks) && c.chunks.every(v =>
+      && typeof c.cameraProfileId === 'string' && Array.isArray(c.chunks) && c.chunks.every(v =>
         typeof v.id === 'string' && typeof v.uri === 'string' && v.uri.startsWith('file://') && Number.isFinite(v.durationMs) && v.durationMs > 0 && Number.isFinite(v.fileSizeBytes) && v.fileSizeBytes > 0);
   }
   restoreFromCatalog(catalog: SessionCatalog): boolean {
     if (this.isTransitioning || ['recording','starting','finalizing','exporting'].includes(this.state) || !this.validCatalog(catalog)) return false;
     this.currentSessionId=catalog.sessionId; this.createdAt=catalog.createdAt; this.chunks=catalog.chunks.map(c=>({...c}));
     this.setState(this.chunks.length ? 'stopped' : 'idle'); return true;
+  }
+  configure(profile:CameraProfile){if(!this.isTransitioning&&!['recording','starting','finalizing','exporting'].includes(this.state))this.cameraProfile=profile;}
+  async importChunk(video:FinalizedVideo):Promise<boolean>{
+    if(this.isTransitioning||['recording','starting','finalizing','exporting'].includes(this.state))return false;
+    this.isTransitioning=true;try{await this.handleFinalizedChunk(video);this.errorMessage=null;this.setState('stopped');return true}
+    catch(e){this.errorMessage=message(e);this.setState('error');return false}finally{this.isTransitioning=false}
+  }
+  async editChunks(action:'delete'|'move'|'clear',id?:string,direction=0):Promise<boolean>{
+    if(this.isTransitioning||this.cameraDriver?.isRecording?.()||['recording','starting','finalizing','exporting'].includes(this.state))return false;
+    this.isTransitioning=true;const before=this.getChunks();const removed=action==='clear'?before:before.filter(c=>c.id===id&&action==='delete');
+    try{
+      if(action==='clear')this.chunks=[];
+      if(action==='delete')this.chunks=this.chunks.filter(c=>c.id!==id);
+      if(action==='move'){const from=this.chunks.findIndex(c=>c.id===id),to=from+direction;if(from<0||to<0||to>=this.chunks.length)return false;const copy=this.getChunks();[copy[from],copy[to]]=[copy[to],copy[from]];this.chunks=copy;}
+      try{await this.persist()}catch(e){this.chunks=before;throw e}
+      for(const c of removed)await this.storage?.deleteFile?.(c.uri);
+      this.errorMessage=null;this.setState(this.chunks.length?'stopped':'idle');return true
+    }catch(e){this.errorMessage=message(e);this.setState('error');return false}finally{this.isTransitioning=false}
   }
 }

@@ -1,0 +1,5 @@
+import {cameras} from '../../cameras';
+import {resolveEffect,effectKeys} from '../effect';
+test('six independent camera profiles support both actual capture modes',()=>{expect(cameras).toHaveLength(6);expect(new Set(cameras.map(c=>c.id)).size).toBe(6);for(const c of cameras){expect(c.modes).toEqual(['photo','video']);expect(c.isPaid).toBe(false);expect(effectKeys.every(k=>Number.isFinite(resolveEffect(c.filterConfig)[k]))).toBe(true)}});
+test('strength zero removes color and grain while retaining the chosen physical frame',()=>{const neutral=resolveEffect(cameras[0].filterConfig,0);expect(neutral.warmth).toBe(0);expect(neutral.grainIntensity).toBe(0);expect(neutral.contrast).toBe(1);expect(neutral.lut1).toBe(.25);expect(neutral.frame).toBe(1)});
+test('profiles contain distinct tone LUTs and different optional layers',()=>{expect(new Set(cameras.map(c=>JSON.stringify(resolveEffect(c.filterConfig)))).size).toBe(6);expect(cameras[1].filterConfig.scanlines).toBeGreaterThan(0);expect(cameras[0].filterConfig.scratches).toBeGreaterThan(0)});

@@ -11,13 +11,11 @@ import androidx.media3.effect.BaseGlShaderProgram
 
 @androidx.annotation.OptIn(UnstableApi::class)
 class WarmFilmShaderProgram(
-    context: Context, useHdr: Boolean,
-    private val warmth: Float, private val contrast: Float, private val saturation: Float,
-    private val grainIntensity: Float, private val grainScale: Float, private val grainSpeed: Float
+    context: Context, useHdr: Boolean, private val config: FxConfig
 ) : BaseGlShaderProgram(useHdr, 1) {
     private val program = GlProgram(WarmFilmShaderSource.VERTEX, WarmFilmShaderSource.FRAGMENT)
     init {
-        require(!useHdr) { "Этап 0 поддерживает только SDR" }
+        require(!useHdr) { "Для HDR сначала требуется преобразование в SDR" }
         program.setBufferAttribute("aFramePosition", GlUtil.getNormalizedCoordinateBounds(), GlUtil.HOMOGENEOUS_COORDINATE_VECTOR_SIZE)
     }
     override fun configure(inputWidth: Int, inputHeight: Int): Size {
@@ -29,12 +27,7 @@ class WarmFilmShaderProgram(
             program.use()
             program.setSamplerTexIdUniform("uTexSampler", inputTexId, 0)
             program.setFloatUniform("uTime", ((presentationTimeUs / 1000L) % 4096000L).toFloat() / 1000f)
-            program.setFloatUniform("uWarmth", warmth)
-            program.setFloatUniform("uContrast", contrast)
-            program.setFloatUniform("uSaturation", saturation)
-            program.setFloatUniform("uGrainIntensity", grainIntensity)
-            program.setFloatUniform("uGrainScale", grainScale)
-            program.setFloatUniform("uGrainSpeed", grainSpeed)
+            config.bind(program)
             program.bindAttributesAndUniforms()
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
             GlUtil.checkGlError()

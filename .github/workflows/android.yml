@@ -3,100 +3,143 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'modules/**'
-      - 'effects/**'
-      - 'assets/**'
-      - 'plugins/**'
-      - 'scripts/**'
-      - 'package*.json'
-      - 'app*.js'
-      - 'app.json'
-      - 'App.tsx'
-      - 'index.ts'
-      - 'babel.config.js'
-      - 'tsconfig.json'
-      - 'jest.config.js'
-      - '.github/workflows/android.yml'
+    paths: ['src/**','modules/**','effects/**','assets/**','plugins/**','scripts/**','package*.json','app*.js','app.json','App.tsx','index.ts','babel.config.js','tsconfig.json','jest.config.js','.github/workflows/android.yml']
 permissions:
   contents: read
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: false
+env:
+  CI: '1'
+  EXPO_NO_TELEMETRY: '1'
+  ANDROID_VERSION_CODE: ${{ github.run_number }}
 jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
-    permissions:
-      contents: write
-    env:
-      CI: '1'
-      EXPO_NO_TELEMETRY: '1'
-      ANDROID_VERSION_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
+        with: {node-version: '22', cache: npm}
       - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Check TypeScript, shader generation and session tests
+        with: {distribution: temurin, java-version: '17', cache: gradle}
+      - run: npm ci --no-audit --no-fund
+      - name: Check source, camera profiles, shaders and session editing
         run: |
           npm run typecheck
           npm run check:shaders
-          node scripts/check-shader.cjs
+          npm run check:shader-compile
           npm test -- --runInBand
-      - name: Verify standalone Android JS bundle
-        run: npx expo export --platform android --output-dir /tmp/retro-bundle-check --max-workers 2
-      - name: Generate Android project
-        run: npx expo prebuild --clean --platform android --no-install
-      - name: Verify native exporter registration
+          npx expo export --platform android --output-dir /tmp/retro-bundle-check --max-workers 2
+      - run: npx expo prebuild --clean --platform android --no-install
+      - name: Verify native module registration
         run: |
           npx expo-modules-autolinking resolve --platform android > /tmp/expo-modules.json
-          node -e "const fs=require('fs');const x=fs.readFileSync('/tmp/expo-modules.json','utf8');if(!x.includes('expo.modules.retroexport.RetroExportModule'))throw Error('Native exporter is not registered');"
-      - name: Install Android build tools
-        uses: android-actions/setup-android@v4
-        with:
-          cmdline-tools-version: '12266719'
-          log-accepted-android-sdk-licenses: false
-      - name: Install platform and NDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
-      - name: Build standalone test APK
+          node -e "if(!require('fs').readFileSync('/tmp/expo-modules.json','utf8').includes('expo.modules.retroexport.RetroExportModule'))throw Error('Missing exporter');"
+      - uses: android-actions/setup-android@v4
+        with: {cmdline-tools-version: '12266719', log-accepted-android-sdk-licenses: false}
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
+      - name: Build standalone APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
-      - name: Verify signature and prepare download
+        run: ./gradlew assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+      - name: Verify signed APK
         run: |
           mkdir -p release-apk
-          cp android/app/build/outputs/apk/release/app-release.apk release-apk/YAi-Retro-Camera-stage-0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-apk/YAi-Retro-Camera-stage-0.apk
+          cp android/app/build/outputs/apk/release/app-release.apk release-apk/YAi-Retro-Camera-0.2.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-apk/YAi-Retro-Camera-0.2.0.apk
           cd release-apk
-          sha256sum YAi-Retro-Camera-stage-0.apk > SHA256SUMS.txt
+          sha256sum YAi-Retro-Camera-0.2.0.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
+        with: {name: 'YAi-Retro-Camera-${{ github.run_number }}', path: 'release-apk/*', if-no-files-found: error}
+
+  native:
+    name: Native media tests · Android API ${{ matrix.api }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix: {api: [26, 29]}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17', cache: gradle}
+      - run: npm ci --no-audit --no-fund
+      - uses: android-actions/setup-android@v4
+        with: {cmdline-tools-version: '12266719', log-accepted-android-sdk-licenses: false}
+      - name: Generate synthetic fixtures and native project
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          bash scripts/make-test-media.sh
+          npx expo prebuild --clean --platform android --no-install
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;26.1.10909125'
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
         with:
-          name: YAi-Retro-Camera-stage-0-${{ github.run_number }}
-          path: release-apk/*
-          if-no-files-found: error
-      - name: Publish test APK to Releases
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          ram-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          script: cd android && ./gradlew :retro-export:connectedDebugAndroidTest --no-daemon --max-workers=2 -PreactNativeArchitectures=x86_64 -Pkotlin.compiler.execution.strategy=in-process -Dorg.gradle.jvmargs=-Xmx2g
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-media-api-${{ matrix.api }}
+          path: |
+            modules/retro-export/android/build/reports/androidTests/
+            modules/retro-export/android/build/outputs/androidTest-results/
+
+  smoke:
+    name: App launch · Android API ${{ matrix.api }}
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix: {api: [29, 35]}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: android-actions/setup-android@v4
+        with: {cmdline-tools-version: '12266719', log-accepted-android-sdk-licenses: false}
+      - uses: actions/download-artifact@v4
+        with: {name: 'YAi-Retro-Camera-${{ github.run_number }}', path: release-apk}
+      - run: sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          ram-size: 2048M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back emulated
+          script: bash scripts/smoke-android.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'app-launch-api-${{ matrix.api }}', path: 'smoke-output/*'}
+
+  publish:
+    needs: [build, native, smoke]
+    runs-on: ubuntu-22.04
+    permissions: {contents: write}
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {name: 'YAi-Retro-Camera-${{ github.run_number }}', path: release-apk}
+      - name: Publish tested update
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          tag="stage-0-${GITHUB_RUN_NUMBER}"
+          tag="v0.2.0-test-${GITHUB_RUN_NUMBER}"
           cat > /tmp/release-notes.md <<'NOTES'
-          Android 10+ (ARM64 / ARMv7). Test build, signed with the standard development key. No production signing keys are used.
-
-          Camera → separate clips → warm/grain effect → Media3 export → gallery.
-          Stage 0 still requires the owner's real-phone test: three clips, visible effect, synchronized audio, playback from gallery.
-          This APK starts without Metro, Expo Go, a computer or an account.
+          YAi Retro Camera 0.2.0 — first feature release for Android 8+.
+          Six photo/video cameras, effect intensity, Full HD/4K options when supported, removable/reorderable clips, saved gallery management, photo booth/collage/polaroid, media import, date/REC and two interface styles.
+          Live microphone is the default. Vintage sound is optional; no artificial crackle is added.
+          Build, signature, source tests, synthetic native media tests and emulator launch checks passed. Xiaomi Mi 8 / Android 10 still needs the owner's real camera/microphone test.
+          Update over stage-0-3 with the same development signing identity. Do not uninstall first if you want to keep drafts.
           NOTES
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" release-apk/* --clobber
-          else
-            gh release create "$tag" release-apk/* --target "$GITHUB_SHA" --prerelease --title "Stage 0 test build ${GITHUB_RUN_NUMBER}" --notes-file /tmp/release-notes.md
-          fi
+          gh release create "$tag" release-apk/* --target "$GITHUB_SHA" --prerelease --title "YAi Retro Camera 0.2.0 · test ${GITHUB_RUN_NUMBER}" --notes-file /tmp/release-notes.md

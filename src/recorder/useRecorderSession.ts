@@ -7,7 +7,8 @@ import { SessionCatalog } from './types';
 import { RetroExport } from '../../modules/retro-export';
 import { VideoRecordingDriver } from './VideoRecordingDriver';
 
-export function useRecorderSession(profile: CameraProfile, cameraRef: React.RefObject<Camera>) {
+export function useRecorderSession(profile: CameraProfile, cameraRef: React.RefObject<Camera>,exportSettings:Record<string,unknown>={}) {
+  const exportRef=useRef(exportSettings);exportRef.current=exportSettings;
   const [, render] = useState(0);
   const [ready, setReady] = useState(false);
   const [restored, setRestored] = useState(false);
@@ -20,10 +21,11 @@ export function useRecorderSession(profile: CameraProfile, cameraRef: React.RefO
     const sync = () => {if (mounted.current) render(v=>v+1);};
     const storage: StorageAdapter = {
       saveSession: catalog => RetroExport.saveCatalog(JSON.stringify(catalog)),
+      deleteFile:uri=>RetroExport.deleteSource(uri),
       loadSession: async () => null,
       loadCurrentSession: async () => {const json=await RetroExport.loadCatalog(); return json ? JSON.parse(json) as SessionCatalog : null;},
       verifyFile: async uri => {
-        try {const info=await RetroExport.inspectVideo(uri); return {exists:true, sizeBytes:info.sizeBytes, durationMs:info.durationMs};}
+        try {const info=await RetroExport.inspectVideo(uri); return {exists:true, sizeBytes:info.sizeBytes, durationMs:info.durationMs,hasAudio:info.hasAudio,thumbnailUri:info.thumbnailUri};}
         catch {return {exists:false, sizeBytes:0};}
       },
     };
@@ -32,7 +34,7 @@ export function useRecorderSession(profile: CameraProfile, cameraRef: React.RefO
       video=>{void managerRef.current!.recordingFinished(video).finally(sync);},
       error=>{managerRef.current!.recordingFailed(error); sync();});
     managerRef.current = new SessionManager(profile, {storage, cameraDriver:driver,
-      nativeExporter:{exportChunks:options=>RetroExport.exportSession(options)}, onStateChange:sync});
+      nativeExporter:{exportChunks:options=>RetroExport.exportSession({...options,settings:exportRef.current})}, onStateChange:sync});
   }
   const manager=managerRef.current;
   const sync=useCallback(()=>{if (mounted.current) render(v=>v+1);},[]);
@@ -49,6 +51,7 @@ export function useRecorderSession(profile: CameraProfile, cameraRef: React.RefO
     return()=>sub.remove();
   },[manager,sync]);
   const state=manager.getState();
+  useEffect(()=>{manager.configure(profile)},[manager,profile,state]);
   useEffect(()=>{
     if(state!=='recording') {setTime(0); return;}
     const start=Date.now(); const timer=setInterval(()=>setTime(Date.now()-start),100);
@@ -62,5 +65,9 @@ export function useRecorderSession(profile: CameraProfile, cameraRef: React.RefO
     start:()=>invoke(()=>manager.startRecording()), pause:()=>invoke(()=>manager.pauseRecording()),
     continueRec:()=>invoke(()=>manager.continueRecording()), stop:()=>invoke(()=>manager.stopRecording()),
     reset:()=>invoke(()=>manager.resetSession()),
+    importClip:(clip:import('./SessionManager').FinalizedVideo)=>invoke(()=>manager.importChunk(clip)),
+    deleteChunk:(id:string)=>invoke(()=>manager.editChunks('delete',id)),
+    moveChunk:(id:string,direction:number)=>invoke(()=>manager.editChunks('move',id,direction)),
+    clear:()=>invoke(()=>manager.editChunks('clear')),
     exportAndStitch:async()=>{const result=await manager.exportAndStitch(); sync(); return result;}};
 }
