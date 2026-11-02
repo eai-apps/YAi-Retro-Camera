@@ -100,7 +100,7 @@ try:
                     break
                 time.sleep(1)
             tap('Начать запись')
-            time.sleep(3)
+            time.sleep(.6)
             tap('Пауза')
             wait_text(f'Лента · {count} ·', contains=True)
         shot('06-recorded-clips')
@@ -109,7 +109,8 @@ try:
         tap('Удалить', last=True)
         wait_text('Лента · 1 ·', contains=True)
         tap('Склеить и сохранить видео')
-        wait_text('Видео сохранено', timeout=120)
+        # Software GPU export is much slower than a phone GPU; keep the real flow.
+        wait_text('Видео сохранено', timeout=360)
         shot('07-video-saved')
         tap('Готово')
     print('APK UI: photo capture/save/gallery deletion/settings/theme passed; API29+ also recorded two video clips, deleted one and exported the survivor.')
