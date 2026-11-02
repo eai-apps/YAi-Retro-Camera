@@ -46,6 +46,7 @@ jobs:
         run: |
           mkdir -p release-apk
           cp android/app/build/outputs/apk/release/app-release.apk release-apk/YAi-Retro-Camera-0.2.0.apk
+          python3 scripts/check-apk.py release-apk/YAi-Retro-Camera-0.2.0.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-apk/YAi-Retro-Camera-0.2.0.apk
           cd release-apk
           sha256sum YAi-Retro-Camera-0.2.0.apk > SHA256SUMS.txt

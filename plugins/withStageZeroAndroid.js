@@ -1,5 +1,17 @@
-const {withGradleProperties,withAndroidManifest}=require('@expo/config-plugins');
+const {withGradleProperties,withAndroidManifest,withAppBuildGradle}=require('@expo/config-plugins');
 module.exports=function(config){
+  config=withAppBuildGradle(config,result=>{
+    const marker='// YAi: package only complete native architectures.';
+    if(!result.modResults.contents.includes(marker)){
+      const anchor='    defaultConfig {';
+      if(!result.modResults.contents.includes(anchor))throw Error('Review Expo defaultConfig ABI filter');
+      result.modResults.contents=result.modResults.contents.replace(anchor,anchor+`
+        ${marker}
+        ndk { abiFilters(*((findProperty('reactNativeArchitectures') ?: 'arm64-v8a,armeabi-v7a,x86_64').split(','))) }
+`);
+    }
+    return result;
+  });
   config=withAndroidManifest(config,result=>{
     const permissions=result.modResults.manifest['uses-permission']??[];
     result.modResults.manifest['uses-permission']=permissions.filter(p=>!['android.permission.WRITE_EXTERNAL_STORAGE','android.permission.READ_EXTERNAL_STORAGE'].includes(p.$['android:name']));
