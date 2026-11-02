@@ -23,3 +23,12 @@ if(!view.includes(after)){
   if(!view.includes(before))throw Error('Review camera photo surface patch');
   fs.writeFileSync(viewFile,view.replace(before,after));
 }
+
+// Expose a snapshot so JS can recover even when the initialization event was missed.
+code=fs.readFileSync(file,'utf8');
+if(!code.includes('fun getCurrentDevices(')){
+  const point='  // Required for NativeEventEmitter, this is just a dummy implementation:';
+  if(!code.includes(point))throw Error('Review camera snapshot patch');
+  const method='  @ReactMethod\n  fun getCurrentDevices(promise: com.facebook.react.bridge.Promise) {\n    coroutineScope.launch { promise.resolve(getDevicesJson()) }\n  }\n\n';
+  fs.writeFileSync(file,code.replace(point,method+point));
+}

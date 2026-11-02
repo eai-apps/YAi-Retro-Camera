@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, PermissionsAndroid, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Camera, useCameraDevice } from 'react-native-vision-camera';
+import { Camera } from 'react-native-vision-camera';
 import Slider from '@react-native-community/slider';
+import {useCameraHardware} from '../features/useCameraHardware';
 import * as ImagePicker from 'expo-image-picker';
 import { RetroExport, SavedMedia } from '../../modules/retro-export';
 import { cameras, cameraById } from '../cameras';
@@ -46,7 +47,7 @@ export function RetroCameraScreen() {
     const operation = useRef(false);
     const photosRef = useRef(settings.photoDraft);
     photosRef.current = settings.photoDraft;
-    const device = useCameraDevice(settings.position);
+    const device = useCameraHardware(settings.position);
     const recording = session.state === 'recording';
     const processing = ['starting', 'finalizing', 'exporting'].includes(session.state);
     const locked = recording || processing || !!busy;
@@ -182,13 +183,13 @@ export function RetroCameraScreen() {
   <View style={s.header}><Image source={require('../../assets/brand/icon.png')} style={s.logo}/><View style={{ flex: 1 }}><Text style={s.brand}>YAi <Text style={{ color: accent }}>RETRO</Text></Text><Text style={s.subBrand}>{retro ? 'ПЛЁНКА · КАССЕТА · МОМЕНТ' : 'Сохраняй моменты по-своему'}</Text></View><TouchableOpacity disabled={locked} onPress={() => setSettingsOpen(true)}><Text style={s.headerAction}>Настройки</Text></TouchableOpacity></View>
   <View style={s.modeBar}><Choice label="Фото" selected={mode === 'photo'} disabled={locked} onPress={() => modeChange('photo')}/><Choice label="Видео" selected={mode === 'video'} disabled={locked} onPress={() => modeChange('video')}/><View style={{ flex: 1 }}/><TouchableOpacity disabled={locked} onPress={() => { session.onCameraReady(false); update({ position: settings.position === 'back' ? 'front' : 'back' }); }}><Text style={s.headerAction}>↻ Камера</Text></TouchableOpacity></View>
   <View style={[s.viewfinder, retro && s.retroFinder]}>
-   <RetroCameraPreview key={`${mode}-${settings.quality}-${settings.position}-${cameraGeneration}`} cameraProfile={profile} cameraRef={cameraRef} isActive={session.foreground && (!busy || busy.startsWith('Снимаем') || busy.startsWith('Фотобудка')) && session.state !== 'exporting'} onReady={session.onCameraReady} onError={session.onCameraError} quality={settings.quality} position={settings.position} mode={mode} audio={settings.audioMode !== 'mute'} onFormat={onFormat}/>
+   <RetroCameraPreview key={cameraGeneration} cameraProfile={profile} cameraRef={cameraRef} isActive={session.foreground && (!busy || busy.startsWith('Снимаем') || busy.startsWith('Фотобудка')) && session.state !== 'exporting'} onReady={session.onCameraReady} onError={session.onCameraError} quality={settings.quality} position={settings.position} mode={mode} audio={settings.audioMode !== 'mute'} onFormat={onFormat}/>
    <View pointerEvents="none" style={s.topOverlay}><Text style={s.finderTag}>{selectedCamera.name}</Text><Text style={[s.finderTag, recording && { color: '#ff625f' }]}>{recording ? '● REC ' : mode === 'photo' ? 'ФОТО ' : 'ВИДЕО '}{recording ? time(session.currentRecordingTimeMs) : ''}</Text></View>
    {settings.dateEnabled && <Text style={s.date}>{settings.dateText || new Date(clock).toLocaleString('ru-RU')}</Text>}
    {!!countdown && <Text style={s.countdown}>{countdown}</Text>}
    {(!!busy || processing) && <View style={s.progress}><ActivityIndicator color={accent}/><Text style={s.progressText}>{busy || 'Сохраняем видео…'}</Text>{busy.startsWith('Фотобудка') && <TouchableOpacity onPress={() => { photoCancel.current = true; }}><Text style={s.headerAction}>Остановить фотобудку</Text></TouchableOpacity>}</View>}
   </View>
-  <View style={s.infoRow}><Text style={s.info}>{format.width ? `${format.width} × ${format.height}` : 'Камера…'}{mode === 'video' ? ` · ${settings.quality === '4k' ? '4K' : settings.quality === '1080' ? 'Full HD' : '720p'}` : ''}</Text><Text style={s.info}>{mode === 'video' ? (settings.audioMode === 'mute' ? 'Без звука' : settings.audioMode === 'vintage' ? 'Плёночный звук' : 'Микрофон включён') : 'Фото · JPEG высокого качества'}</Text></View>
+  <View style={s.infoRow}><Text style={s.info}>{format.width ? `${format.width} × ${format.height}` : 'Авто · размер при сохранении'}{mode === 'video' ? ` · ${settings.quality === '4k' ? '4K' : settings.quality === '1080' ? 'Full HD' : '720p'}` : ''}</Text><Text style={s.info}>{mode === 'video' ? (settings.audioMode === 'mute' ? 'Без звука' : settings.audioMode === 'vintage' ? 'Плёночный звук' : 'Микрофон включён') : 'Фото · JPEG высокого качества'}</Text></View>
   {(session.errorMessage || settingsError) && <TouchableOpacity onPress={() => { setCameraGeneration(v => v + 1); if (!session.restored)
         void session.initialize(); }}><Text style={s.error}>{session.errorMessage || settingsError} · Повторить</Text></TouchableOpacity>}
   <ScrollView horizontal style={{ height: 62, maxHeight: 62, flexGrow: 0 }} showsHorizontalScrollIndicator={false} contentContainerStyle={s.cameraList}>{cameras.map((c, i) => <TouchableOpacity key={c.id} disabled={locked} onPress={() => update({ cameraId: c.id })} style={[s.cameraCard, c.id === selectedCamera.id && { borderColor: c.accent, backgroundColor: retro ? '#4b3d2c' : '#323440' }]}><Text style={[s.cameraGlyph, { color: c.accent }]}>{['◉', '▣', '▰', '▤', '▧', '▢'][i]}</Text><Text style={s.cameraName}>{c.name}</Text></TouchableOpacity>)}</ScrollView>

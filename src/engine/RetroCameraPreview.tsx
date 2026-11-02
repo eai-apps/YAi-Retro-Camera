@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, AppState, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Camera, useCameraDevice, useCameraFormat, useSkiaFrameProcessor } from 'react-native-vision-camera';
+import { Camera, useCameraFormat, useSkiaFrameProcessor } from 'react-native-vision-camera';
+import {useCameraHardware} from '../features/useCameraHardware';
 import { Skia } from '@shopify/react-native-skia';
 import { CameraProfile } from '../cameras/types';
 import { WARM_FILM_SKSL_SHADER } from './RetroSkiaShader';
@@ -17,12 +18,13 @@ interface Props {
   onFormat?:(width:number,height:number)=>void;
 }
 export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady, onError,quality='1080',position='back',mode='video',audio=true,onFormat }: Props) {
-  const device = useCameraDevice(position);
+  const device = useCameraHardware(position);
   const width=quality==='4k'?3840:quality==='720'?1280:1920;
-  const format = useCameraFormat(device, [{videoResolution: {width, height:width*9/16}}, {fps: 30},{photoResolution:'max'}]);
+  const format = useCameraFormat(device?.formats.length?device:undefined, [{videoResolution: {width, height:width*9/16}}, {fps: 30},{photoResolution:'max'}]);
   const [permission, setPermission] = useState<boolean | null>(null);
   const [permissionError, setPermissionError] = useState('');
   const [initialized, setInitialized] = useState(false);
+  useEffect(()=>{setInitialized(false)},[quality,position,mode]);
   const paintAndBuilder = useMemo(() => {
     const effect = Skia.RuntimeEffect.Make(WARM_FILM_SKSL_SHADER);
     if (!effect) throw new Error('Не удалось создать эффект камеры');
@@ -56,19 +58,19 @@ export function RetroCameraPreview({ cameraProfile, cameraRef, isActive, onReady
     const subscription = AppState.addEventListener('change', state => {if (state === 'active') void request();});
     return () => { alive = false; subscription.remove(); };
   }, [audio,mode]);
-  useEffect(()=>{if(format)onFormat?.(mode==='photo'?format.photoWidth:format.videoWidth,mode==='photo'?format.photoHeight:format.videoHeight)},[format,mode,onFormat]);
+  useEffect(()=>{if(format)onFormat?.(mode==='photo'?format.photoWidth:format.videoWidth,mode==='photo'?format.photoHeight:format.videoHeight);else onFormat?.(0,0)},[format,mode,onFormat]);
   useEffect(() => { onReady(permission === true && initialized && isActive); }, [permission, initialized, isActive, onReady]);
   if (permission === null) return <View style={styles.center}><ActivityIndicator /><Text style={styles.text}>Проверка камеры и микрофона…</Text></View>;
   if (!permission) return <View style={styles.center}>
     <Text style={styles.text}>Для записи со звуком разрешите камеру и микрофон в настройках приложения.{permissionError}</Text>
     <TouchableOpacity onPress={() => void Linking.openSettings()}><Text style={styles.action}>Открыть настройки</Text></TouchableOpacity>
   </View>;
-  if (!device || !format) return <View style={styles.center}><Text style={styles.text}>Подходящая камера не найдена.</Text></View>;
+  if (!device) return <View style={styles.center}><Text style={styles.text}>Подходящая камера не найдена.</Text></View>;
   return <Camera ref={cameraRef} style={StyleSheet.absoluteFill} device={device} format={format}
-    fps={Math.max(format.minFps, Math.min(30, format.maxFps))} videoHdr={false} photoHdr={false}
+    fps={format?Math.max(format.minFps, Math.min(30, format.maxFps)):undefined} videoHdr={false} photoHdr={false}
     isActive={isActive} video={mode==='video'} photo={mode==='photo'} audio={mode==='video'&&audio} frameProcessor={processor} pixelFormat="yuv" outputOrientation="preview" resizeMode="contain"
     videoBitRate={quality==='4k'?40:quality==='1080'?18:8}
-    onInitialized={() => setInitialized(true)} onStarted={()=>setInitialized(true)} onStopped={()=>setInitialized(false)} onError={error => {setInitialized(false); onError(error);}} />;
+    onInitialized={() => setInitialized(true)} onStarted={()=>setInitialized(true)} onError={error => {setInitialized(false); onError(error);}} />;
 }
 const styles = StyleSheet.create({center:{flex:1,alignItems:'center',justifyContent:'center',padding:24,backgroundColor:'#111'},
   text:{color:'#eee',textAlign:'center',margin:12},action:{color:'#ffb300',padding:12}});

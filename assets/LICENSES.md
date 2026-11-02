@@ -26,3 +26,4 @@ FFmpeg/FFmpegKit, GPL-код, платные SDK и закрытый код Blac
 
 Локальная поправка VisionCamera 4.7.3 (MIT): scripts/patch-vision-camera.cjs добавляет событие обновления списка камер после асинхронного CameraX init; исходный файл CameraDevicesManager.kt поставляется npm-пакетом, авторские уведомления сохраняются. Версия и точка применения проверяются postinstall, новая версия требует отдельного пересмотра.
 Дополнение поправки: в режиме photo=false/video=false не создаётся лишний VideoCapture только ради ImageAnalysis; при photo=true/video=false остаются фото + обработка превью, при video=true видеозапись сохраняется. Это предотвращает лишнюю нагрузку/ошибку комбинации camera surfaces.
+Ещё одна часть совместимой поправки VisionCamera: метод getCurrentDevices возвращает актуальный список на её serial camera executor; собственный useCameraHardware читает снимок и подписывается на события, чтобы не зависеть от порядка старта native/JS.
