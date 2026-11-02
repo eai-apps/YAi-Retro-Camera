@@ -87,15 +87,15 @@ else if(!deviceFormat.includes(exactQuality))throw Error('Review exact recording
 configuration=fs.readFileSync(configurationFile,'utf8').replace(/\r\n/g,'\n');
 if(!configuration.includes('// YAi: bound native preview to the display.')){
   const point=configuration.indexOf('        val targetSize = if (videoConfig != null) format.videoSize else format.photoSize');
-  const start=configuration.indexOf('        val resolutionSelector = ResolutionSelector.Builder()',point);
-  const end=configuration.indexOf('        preview.setResolutionSelector(resolutionSelector)',start);
+  const start=configuration.indexOf('        val previewResolutionSelector = ResolutionSelector.Builder()',point);
+  const end=configuration.indexOf('        preview.setResolutionSelector(previewResolutionSelector)',start);
   if(point<0||start<0||end<0)throw Error('Review native preview resolution patch');
   const replacement=`        // YAi: bound native preview to the display.
         val displaySize = android.graphics.Point()
         val windows = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
         windows.defaultDisplay.getRealSize(displaySize)
         val previewArea = maxOf(640L * 480, minOf(1920L * 1080, displaySize.x.toLong() * displaySize.y))
-        val resolutionSelector = ResolutionSelector.Builder()
+        val previewResolutionSelector = ResolutionSelector.Builder()
           .forSize(targetSize)
           .setAllowedResolutionMode(ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
           .setResolutionFilter { sizes, _ ->
