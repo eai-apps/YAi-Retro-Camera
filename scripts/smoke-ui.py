@@ -27,6 +27,9 @@ def wait_text(label, timeout=40, contains=False):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
         root = window()
+        if any(n.get('text') == 'Качество камеры' for n in root.iter('node')):
+            tap('OK')
+            continue
         if any(label in n.get('text', '') if contains else label in (n.get('text'), n.get('content-desc')) for n in root.iter('node')):
             return
         time.sleep(1)

@@ -13,3 +13,13 @@ if(!code.includes('// YAi: refresh the JS cache')){
   fs.writeFileSync(file,code.replace(anchor,anchor+addition));
 }
 console.log('Applied VisionCamera asynchronous device readiness fix.');
+// Photo mode with a frame processor needs ImageCapture + ImageAnalysis only.
+// Upstream enables a third VideoCapture surface even when video={false}.
+const viewFile=path.join(root,'android/src/main/java/com/mrousavy/camera/react/CameraView.kt');
+let view=fs.readFileSync(viewFile,'utf8');
+const before='if (video || enableFrameProcessor) {';
+const after='if (video) { // YAi: frame processing has its own ImageAnalysis output.';
+if(!view.includes(after)){
+  if(!view.includes(before))throw Error('Review camera photo surface patch');
+  fs.writeFileSync(viewFile,view.replace(before,after));
+}
