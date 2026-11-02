@@ -68,6 +68,20 @@ class MediaPipelineTest {
             assertTrue(files.library().any{it["uri"]==uri.toString()});files.deleteSaved(uri.toString());created.remove(uri)
         }finally{exporter.close();clips.forEach{files.deleteSource(it)}}
     }
+    @Test fun fullHdExportKeeps1080By1920AndAudio(){
+        val source=File(context.cacheDir,"full-hd-source.mp4")
+        instrumentation.context.assets.open("clip-1.mp4").use{input->source.outputStream().use{input.copyTo(it)}}
+        val clip=files.commit(source.path,"video")["uri"] as String
+        val result=ResultPromise();val exporter=VideoExporter(context,files)
+        try{
+            exporter.export(mapOf("inputUris" to listOf(clip),"quality" to "1080","aspect" to "9:16","audioMode" to "live","showRec" to false,"dateEnabled" to false),result)
+            assertTrue("Full HD export timed out",result.done.await(120,TimeUnit.SECONDS));result.error?.let{throw AssertionError("Full HD export failed",it)}
+            @Suppress("UNCHECKED_CAST") val value=result.value as Map<String,Any>
+            val output=Uri.parse(value["outputUri"] as String);created.add(output)
+            assertEquals(true,value["success"]);assertEquals(1080,value["width"]);assertEquals(1920,value["height"]);assertEquals(true,value["hasAudio"])
+            files.deleteSaved(output.toString());created.remove(output)
+        }finally{exporter.close();files.deleteSource(clip)}
+    }
     private class ResultPromise:Promise {
         val done=CountDownLatch(1);var value:Any?=null;var error:Throwable?=null
         override fun resolve(value:Any?){this.value=value;done.countDown()}
