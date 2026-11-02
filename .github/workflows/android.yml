@@ -59,7 +59,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      matrix: {api: [28, 29]}
+      matrix: {api: [29, 35]}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -81,9 +81,6 @@ jobs:
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api }}
-          # The latest host renderer aborts on API28 with "Unknown format: 0x18".
-          # Official Emulator 35.2.10; keep current hosts for the newer images.
-          emulator-build: ${{ matrix.api == 28 && '12414864' || '' }}
           target: google_apis
           arch: x86_64
           ram-size: 2048M
@@ -110,7 +107,7 @@ jobs:
     timeout-minutes: 25
     strategy:
       fail-fast: false
-      matrix: {api: [28, 29, 35]}
+      matrix: {api: [29, 35]}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -120,12 +117,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with: {name: 'YAi-Retro-Camera-${{ github.run_number }}', path: release-apk}
       - uses: actions/download-artifact@v4
-        with: {name: 'ui-dump-helper-28', path: ui-dump-helper}
+        with: {name: 'ui-dump-helper-29', path: ui-dump-helper}
       - run: sudo chmod 666 /dev/kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api }}
-          emulator-build: ${{ matrix.api == 28 && '12414864' || '' }}
           target: google_apis
           arch: x86_64
           ram-size: 2048M
@@ -149,7 +145,7 @@ jobs:
         run: |
           tag="v0.2.0-test-${GITHUB_RUN_NUMBER}"
           cat > /tmp/release-notes.md <<'NOTES'
-          YAi Retro Camera 0.2.0 — first feature release for Android 9+.
+          YAi Retro Camera 0.2.0 — first feature release for Android 10+.
           Six photo/video cameras, effect intensity, Full HD/4K options when supported, removable/reorderable clips, saved gallery management, photo booth/collage/polaroid, media import, date/REC and two interface styles.
           Live microphone is the default. Vintage sound is optional; no artificial crackle is added.
           Build, signature, source tests, synthetic native media tests and emulator launch checks passed. Xiaomi Mi 8 / Android 10 still needs the owner's real camera/microphone test.

@@ -6,7 +6,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
@@ -39,7 +38,7 @@ class MediaFiles(val context:Context) {
             val rotation=meta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull()?:0;if(rotation%180!=0){val t=w;w=h;h=t}
             require(duration>0&&w>0&&h>0){"Видео не завершено или повреждено"}
             val thumb=File(file.parentFile,"${file.nameWithoutExtension}.jpg")
-            if(!thumb.exists())try {(if(Build.VERSION.SDK_INT>=27)meta.getScaledFrameAtTime(0,MediaMetadataRetriever.OPTION_CLOSEST_SYNC,240,240)else meta.getFrameAtTime(0,MediaMetadataRetriever.OPTION_CLOSEST_SYNC))?.let{b->val small=if(b.width>240||b.height>240)Bitmap.createScaledBitmap(b,(b.width*240f/kotlin.math.max(b.width,b.height)).toInt().coerceAtLeast(1),(b.height*240f/kotlin.math.max(b.width,b.height)).toInt().coerceAtLeast(1),true)else b;thumb.outputStream().use{small.compress(Bitmap.CompressFormat.JPEG,80,it)};if(small!==b)small.recycle();b.recycle()}}catch(_:Exception){}
+            if(!thumb.exists())try {meta.getScaledFrameAtTime(0,MediaMetadataRetriever.OPTION_CLOSEST_SYNC,240,240)?.let{b->val small=if(b.width>240||b.height>240)Bitmap.createScaledBitmap(b,(b.width*240f/kotlin.math.max(b.width,b.height)).toInt().coerceAtLeast(1),(b.height*240f/kotlin.math.max(b.width,b.height)).toInt().coerceAtLeast(1),true)else b;thumb.outputStream().use{small.compress(Bitmap.CompressFormat.JPEG,80,it)};if(small!==b)small.recycle();b.recycle()}}catch(_:Exception){}
             return mapOf("uri" to Uri.fromFile(file).toString(),"durationMs" to duration,"sizeBytes" to file.length(),"width" to w,"height" to h,"hasAudio" to (meta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO)=="yes"),"thumbnailUri" to if(thumb.exists())Uri.fromFile(thumb).toString() else "")
         }finally{meta.release()}
     }
@@ -48,19 +47,18 @@ class MediaFiles(val context:Context) {
         val resolver=context.contentResolver;val folder=(if(isVideo)Environment.DIRECTORY_MOVIES else Environment.DIRECTORY_PICTURES)+"/YAi Retro Camera"
         val name="YAi_Retro_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(5)}.${if(isVideo)"mp4" else "jpg"}"
         val values=ContentValues().apply{put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,if(isVideo)"video/mp4" else "image/jpeg")
-            if(Build.VERSION.SDK_INT>=29){put(MediaStore.MediaColumns.RELATIVE_PATH,folder);put(MediaStore.MediaColumns.IS_PENDING,1)}
-            else {val dir=File(Environment.getExternalStorageDirectory(),folder).apply{mkdirs()};put(MediaStore.MediaColumns.DATA,File(dir,name).path)}}
+            put(MediaStore.MediaColumns.RELATIVE_PATH,folder);put(MediaStore.MediaColumns.IS_PENDING,1)}
         val collection=if(isVideo)MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         val uri=resolver.insert(collection,values)?:error("Не удалось создать файл в галерее")
         try {resolver.openOutputStream(uri,"w")?.use{out->source.inputStream().use{it.copyTo(out)}}?:error("Не удалось записать файл")
             resolver.openFileDescriptor(uri,"r")?.use{check(it.statSize==source.length()){ "Записан не весь файл" }}?:error("Не удалось проверить файл")
-            if(Build.VERSION.SDK_INT>=29){values.clear();values.put(MediaStore.MediaColumns.IS_PENDING,0);check(resolver.update(uri,values,null,null)==1)};return uri
+            values.clear();values.put(MediaStore.MediaColumns.IS_PENDING,0);check(resolver.update(uri,values,null,null)==1);return uri
         }catch(e:Exception){resolver.delete(uri,null,null);throw e}
     }
     fun library():List<Map<String,Any>> {
         val results=mutableListOf<Map<String,Any>>()
         for((collection,type) in listOf(MediaStore.Video.Media.EXTERNAL_CONTENT_URI to "video",MediaStore.Images.Media.EXTERNAL_CONTENT_URI to "photo")){
-            val pathColumn=if(Build.VERSION.SDK_INT>=29)MediaStore.MediaColumns.RELATIVE_PATH else MediaStore.MediaColumns.DATA
+            val pathColumn=MediaStore.MediaColumns.RELATIVE_PATH
             val columns=arrayOf("_id","_display_name","date_added","_size",pathColumn)
             context.contentResolver.query(collection,columns,"$pathColumn LIKE ?",arrayOf("%/YAi Retro Camera/%"),"date_added DESC")?.use{c->
                 while(c.moveToNext()){val name=c.getString(1)?:continue;if(!name.startsWith("YAi_Retro_"))continue

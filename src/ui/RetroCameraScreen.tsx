@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, PermissionsAndroid, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, FlatList, Image, Modal, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Camera } from 'react-native-vision-camera';
 import Slider from '@react-native-community/slider';
 import {useCameraHardware} from '../features/useCameraHardware';
@@ -16,11 +16,6 @@ import { Choice, SettingsPanel } from './SettingsPanel';
 const time = (ms: number) => `${Math.floor(ms / 60000).toString().padStart(2, '0')}:${Math.floor(ms / 1000 % 60).toString().padStart(2, '0')}`;
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 const problem = (e: unknown) => Alert.alert('Не удалось выполнить', e instanceof Error ? e.message : String(e));
-async function galleryAccess() { if (Platform.OS === 'android' && Number(Platform.Version) < 29) {
-    const result = await PermissionsAndroid.requestMultiple([PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE, PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE]);
-    if (result[PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE] !== 'granted' || result[PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE] !== 'granted')
-        throw new Error('На Android 8–9 для сохранения и удаления своих работ нужно разрешение хранилища.');
-} }
 export function RetroCameraScreen() {
     const cameraRef = useRef<Camera>(null);
     const { settings, loaded, error: settingsError, update } = useAppSettings();
@@ -89,7 +84,7 @@ export function RetroCameraScreen() {
     }, [session.restored, loaded]);
     const removeChunk = (chunk: RecordedChunk) => Alert.alert('Удалить этот кусок?', `Кусок длиной ${(chunk.durationMs / 1000).toFixed(1)} с будет удалён из черновика.`, [{ text: 'Отмена', style: 'cancel' }, { text: 'Удалить', style: 'destructive', onPress: () => { void run('Удаляем кусок…', async () => { if (!await session.deleteChunk(chunk.id))
                 throw new Error('Не удалось удалить кусок'); }); } }]);
-    const saveVideo = () => run('Сохраняем видео с эффектом…', async () => { await galleryAccess(); const result = await session.exportAndStitch(); if (!result.success)
+    const saveVideo = () => run('Сохраняем видео с эффектом…', async () => { const result = await session.exportAndStitch(); if (!result.success)
         throw new Error(result.error); Alert.alert('Видео сохранено', `Файл ${result.width ?? '?'} × ${result.height ?? '?'}${result.hasAudio ? ' · со звуком' : ' · без звука'}. Ролик находится в альбоме YAi Retro Camera. Исходные куски остаются в черновике.`, [{ text: 'Открыть', onPress: () => { void RetroExport.openVideo(result.outputUri).catch(problem); } }, { text: 'Новая съёмка', onPress: confirmClear }, { text: 'Готово' }]); });
     const capture = () => run(layout === 'strip' ? 'Фотобудка: четыре кадра' : 'Снимаем фото…', async () => {
         if (!cameraRef.current || !session.ready)
@@ -150,8 +145,6 @@ export function RetroCameraScreen() {
         const uris = layout === 'single' || layout === 'polaroid' ? chosen.slice(-1) : chosen;
         if (!uris.length)
             throw new Error('Сначала снимите или выберите фото');
-        if (!isPreview)
-            await galleryAccess();
         const result = await RetroExport.renderPhoto({ ...profile.filterConfig, inputUris: uris, layout, preview: isPreview, dateEnabled: settings.dateEnabled, dateText: settings.dateText, aspect: settings.aspect });
         if (isPreview) {
             setPreview(result.outputUri);
@@ -159,7 +152,7 @@ export function RetroCameraScreen() {
         }
         Alert.alert('Фото сохранено', `Размер ${result.width} × ${result.height}. Альбом YAi Retro Camera.`, [{ text: 'Открыть', onPress: () => { void RetroExport.openVideo(result.outputUri).catch(problem); } }, { text: 'Готово' }]);
     });
-    const showLibrary = () => run('Загружаем сохранённые работы…', async () => { await galleryAccess(); setLibrary(await RetroExport.listMedia()); setLibraryOpen(true); });
+    const showLibrary = () => run('Загружаем сохранённые работы…', async () => { setLibrary(await RetroExport.listMedia()); setLibraryOpen(true); });
     const deleteSaved = (items: SavedMedia[]) => Alert.alert(items.length === 1 ? 'Удалить сохранённую работу?' : 'Удалить все сохранённые работы?', `Файлы будут удалены из галереи телефона. Это ${items.length} работ YAi Retro Camera, включая прежние тестовые ролики. Чужие файлы не затрагиваются.`, [{ text: 'Отмена', style: 'cancel' }, { text: 'Удалить', style: 'destructive', onPress: () => { void run('Удаляем сохранённые работы…', async () => { for (const item of items)
                 await RetroExport.deleteMedia(item.uri); setLibrary(await RetroExport.listMedia()); }); } }]);
     const checkAudio = (chunk: RecordedChunk) => run('Проверяем звук исходного куска…', async () => { const info = await RetroExport.analyzeAudio(chunk.uri); Alert.alert('Звук исходника', info.hasAudio ? `Звуковая дорожка есть.\nСредний уровень: ${info.rmsDb.toFixed(1)} дБ\nПик: ${info.peakDb.toFixed(1)} дБ\n${info.sampleRate} Гц · ${info.channels} кан.\n${info.rmsDb < -45 ? 'Запись очень тихая. Проверьте голос вблизи телефона.' : 'Прослушайте исходник, чтобы оценить разборчивость.'}` : 'В этом куске нет звуковой дорожки.', [{ text: 'Прослушать', onPress: () => { void RetroExport.openVideo(chunk.uri).catch(problem); } }, { text: 'Готово' }]); });

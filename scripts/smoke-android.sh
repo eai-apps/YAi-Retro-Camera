@@ -7,10 +7,6 @@ test -n "$helper"
 adb install -r "$helper"
 adb shell pm grant com.eai.retrocamera android.permission.CAMERA
 adb shell pm grant com.eai.retrocamera android.permission.RECORD_AUDIO
-if [ "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" -le 28 ]; then
-  adb shell pm grant com.eai.retrocamera android.permission.READ_EXTERNAL_STORAGE
-  adb shell pm grant com.eai.retrocamera android.permission.WRITE_EXTERNAL_STORAGE
-fi
 trap 'timeout 15s adb logcat -d > smoke-output/logcat.txt || true; timeout 15s adb exec-out screencap -p > smoke-output/failure-screen.png || true' EXIT
 timeout 15s adb logcat -c || true
 timeout 30s adb shell am start -W -n com.eai.retrocamera/.MainActivity
