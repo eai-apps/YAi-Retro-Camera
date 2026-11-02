@@ -57,7 +57,7 @@ class VideoExporter(private val context:Context,private val files:MediaFiles) {
             }
             val builder=Composition.Builder(EditedMediaItemSequence(items)).setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
             if(audio!="mute"&&infos.any{it["hasAudio"]==true})builder.experimentalSetForceAudioTrack(true)
-            if(options["showRec"]!=false||options["dateEnabled"]!=false){overlay=StampOverlay(w,h,options);builder.setEffects(Effects(emptyList(),listOf(OverlayEffect(listOf(overlay))))) }
+            if(options["showRec"]!=false||options["dateEnabled"]!=false){overlay=StampOverlay(w,h,options+("baseTimeMs" to System.currentTimeMillis()));builder.setEffects(Effects(emptyList(),listOf(OverlayEffect(listOf(overlay))))) }
             val stamp=overlay
             val encoders=DefaultEncoderFactory.Builder(context).setEnableFallback(false)
                 .setRequestedAudioEncoderSettings(AudioEncoderSettings.Builder().setBitrate(192000).build())
@@ -65,7 +65,10 @@ class VideoExporter(private val context:Context,private val files:MediaFiles) {
             transformer=Transformer.Builder(context).setLooper(Looper.getMainLooper()).setEncoderFactory(encoders)
                 .setVideoMimeType(MimeTypes.VIDEO_H264).setAudioMimeType(MimeTypes.AUDIO_AAC).addListener(object:Transformer.Listener{
                     override fun onCompleted(composition:Composition,result:ExportResult){transformer=null;pending=null;output=null
-                        io.execute{try{val info=files.inspect(out);val uri=files.save(out,true);promise.resolve(mapOf("success" to true,"outputUri" to uri.toString(),"durationMs" to info.getValue("durationMs"),"width" to info.getValue("width"),"height" to info.getValue("height"),"hasAudio" to info.getValue("hasAudio"),"fileSizeBytes" to out.length()))}
+                        io.execute{try{val info=files.inspect(out)
+                            check(info["width"]==w&&info["height"]==h){"Кодек изменил разрешение: ожидалось $w × $h, получено ${info["width"]} × ${info["height"]}. Исходники сохранены."}
+                            check(audio=="mute"||infos.none{it["hasAudio"]==true}||info["hasAudio"]==true){"После склейки пропала звуковая дорожка. Исходники сохранены."}
+                            val uri=files.save(out,true);promise.resolve(mapOf("success" to true,"outputUri" to uri.toString(),"durationMs" to info.getValue("durationMs"),"width" to info.getValue("width"),"height" to info.getValue("height"),"hasAudio" to info.getValue("hasAudio"),"fileSizeBytes" to out.length()))}
                             catch(e:Exception){promise.reject("SAVE",e.message,e)}finally{out.delete();File(out.parentFile,"${out.nameWithoutExtension}.jpg").delete();stamp?.dispose();busy.set(false)}}}
                     override fun onError(composition:Composition,result:ExportResult,exception:ExportException){stamp?.dispose();fail(out,promise,exception)}
                 }).build()

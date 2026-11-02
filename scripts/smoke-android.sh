@@ -4,10 +4,15 @@ mkdir -p smoke-output
 adb install -r release-apk/YAi-Retro-Camera-0.2.0.apk
 adb shell pm grant com.eai.retrocamera android.permission.CAMERA
 adb shell pm grant com.eai.retrocamera android.permission.RECORD_AUDIO
+if [ "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" -le 28 ]; then
+  adb shell pm grant com.eai.retrocamera android.permission.READ_EXTERNAL_STORAGE
+  adb shell pm grant com.eai.retrocamera android.permission.WRITE_EXTERNAL_STORAGE
+fi
 adb logcat -c
 adb shell am start -W -n com.eai.retrocamera/.MainActivity
 sleep 15
 adb shell pidof com.eai.retrocamera
+python3 scripts/smoke-ui.py
 adb logcat -d > smoke-output/logcat.txt
 adb exec-out screencap -p > smoke-output/screen.png
 adb shell uiautomator dump /sdcard/retro-window.xml

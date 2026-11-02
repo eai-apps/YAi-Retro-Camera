@@ -30,7 +30,7 @@ class RetroExportModule:Module(){
         AsyncFunction("deleteMedia"){uri:String,promise:Promise->background(promise){files.deleteSaved(uri);null}}
         AsyncFunction("openVideo"){uri:String,promise:Promise->main.post{try{files.open(uri);promise.resolve(null)}catch(e:Exception){promise.reject("OPEN",e.message,e)}}}
         AsyncFunction("loadSettings"){context.getSharedPreferences("retro_settings",0).getString("settings",null)}
-        AsyncFunction("saveSettings"){json:String->JSONObject(json);context.getSharedPreferences("retro_settings",0).edit().putString("settings",json).apply()}
+        AsyncFunction("saveSettings"){json:String,promise:Promise->background(promise){JSONObject(json);check(context.getSharedPreferences("retro_settings",0).edit().putString("settings",json).commit()){ "Не удалось сохранить настройки" };null}}
         AsyncFunction("saveCatalog"){json:String,promise:Promise->background(promise){
             val data=JSONObject(json);val id=data.getString("sessionId");require(id.matches(Regex("[A-Za-z0-9_-]{1,120}")))
             val chunks=data.getJSONArray("chunks");for(i in 0 until chunks.length())files.privateFile(chunks.getJSONObject(i).getString("uri"))

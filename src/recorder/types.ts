@@ -41,5 +41,8 @@ export interface ExportResult {
   outputUri: string;
   durationMs: number;
   fileSizeBytes?: number;
+  width?: number;
+  height?: number;
+  hasAudio?: boolean;
   error?: string;
 }

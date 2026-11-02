@@ -45,7 +45,7 @@ class FxConfig(options: Map<String, Any?>) {
         val leakAmount=max(0f,1-uvx*3).pow(3)*leak*.7f
         val dustAmount=if(hash(floor(x/70f),floor(y/70f),0f)>.97f&&hypot(x%70-35f,y%70-35f)<1.4f)dust*.65f else 0f
         val scratch=if(hash(floor(x/2f),7f,0f)>.997)scratches*.35f else 0f
-        val scan=1-scanlines*(.5f+.5f*sin(y*3.14159f))*.22f
+        val scan=1-scanlines*(.5f+.5f*sin((y+.5f)*3.14159f))*.22f
         fun out(v:Float,leakGain:Float):Int {val value=(((v+grain)*shade+leakAmount*leakGain+dustAmount+scratch)*scan).coerceIn(0f,1f);return encoded[(value*4096).toInt()]}
         return (255 shl 24) or (out(r,.8f) shl 16) or (out(g,.18f) shl 8) or out(b,.04f)
     }
