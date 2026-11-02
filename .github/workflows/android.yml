@@ -58,7 +58,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       fail-fast: false
-      matrix: {api: [26, 29]}
+      matrix: {api: [28, 29]}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
