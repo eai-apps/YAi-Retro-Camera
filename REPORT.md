@@ -10,7 +10,7 @@
 | Удаление сохранённых работ | MediaStore, только папка/префикс YAi Retro | Native tests подготовлены, старые stage-0-3 имена совместимы |
 | Full HD/4K, дата/REC, живой звук | VisionCamera format/bitrate; Media3 H264/AAC, overlays; AudioTools | Показ фактического формата, без скрытого encoder fallback; CI ожидается |
 | Настройки, темы, иконка | SettingsPanel/useAppSettings, собственный CanvasKit-рисунок | 2 теста настроек; иконка просмотрена локально |
-| Android 8+ | minSDK 26, legacy storage до API28, MediaStore API29+ | prebuild/manifest и эмуляторы ожидаются |
+| Android 9+ | minSDK 28 приложения, legacy storage API28, MediaStore API29+ | уточнено после APK12: живое Skia-превью требует Image.getHardwareBuffer API28; чистые медиа-компоненты проверены также на API26 |
 
 Локально: TypeScript и 39 тестов в 7 наборах прошли, общий SkSL скомпилирован CanvasKit. Полная Android-компиляция и тесты ещё НЕ пройдены. Release workflow блокирует публикацию до native media и запуска APK. Отдельные проверки звука: RMS/peak исходника, синтетическая AAC после склейки, отсутствие придуманного треска в нулевом PCM. Реальный микрофон, качество/скорость/нагрев Mi 8 требуют телефона.
 

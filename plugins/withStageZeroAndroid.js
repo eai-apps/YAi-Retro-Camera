@@ -8,7 +8,7 @@ module.exports=function(config){
     return result;
   });
   return withGradleProperties(config,result=>{
-    for(const [key,value] of Object.entries({'android.minSdkVersion':'26','org.gradle.jvmargs':'-Xmx4g -XX:MaxMetaspaceSize=1g'})){
+    for(const [key,value] of Object.entries({'android.minSdkVersion':'28','org.gradle.jvmargs':'-Xmx4g -XX:MaxMetaspaceSize=1g'})){
       result.modResults=result.modResults.filter(p=>p.type!=='property'||p.key!==key);result.modResults.push({type:'property',key,value});
     }return result;
   });

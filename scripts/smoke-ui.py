@@ -21,7 +21,11 @@ def window():
     raise AssertionError('Cannot inspect Android UI')
 
 def nodes(label):
-    return [n for n in window().iter('node') if label in (n.get('text'), n.get('content-desc'))]
+    return [n for n in window().iter('node') if matches(n, label)]
+
+def matches(node, label):
+    # Android's native AlertDialog applies all-caps to button labels.
+    return label.casefold() in ((node.get('text') or '').casefold(), (node.get('content-desc') or '').casefold())
 
 def wait_text(label, timeout=40, contains=False):
     end = time.monotonic() + timeout
@@ -30,7 +34,7 @@ def wait_text(label, timeout=40, contains=False):
         if any(n.get('text') == 'Качество камеры' for n in root.iter('node')):
             tap('OK')
             continue
-        if any(label in n.get('text', '') if contains else label in (n.get('text'), n.get('content-desc')) for n in root.iter('node')):
+        if any(label.casefold() in n.get('text', '').casefold() if contains else matches(n, label) for n in root.iter('node')):
             return
         time.sleep(1)
     raise AssertionError(f'Missing UI: {label}')
@@ -82,10 +86,33 @@ try:
     tap('Настройки')
     wait_text('Настройки съёмки')
     shot('04-settings')
+    tap('Без звука')
     tap('Ретро-камера')
     tap('Готово')
     shot('05-retro-interface')
-    print('APK UI: camera capture, real photo save, own gallery delete, settings and theme passed.')
+    # Synthetic audio is verified separately; the emulator's camera test is mute.
+    if int(adb('shell', 'getprop', 'ro.build.version.sdk')) >= 29:
+        tap('Видео')
+        for count in (1, 2):
+            # Wait through native reconfiguration from photo to video.
+            for _ in range(30):
+                if any(n.get('enabled') == 'true' for n in nodes('Начать запись')):
+                    break
+                time.sleep(1)
+            tap('Начать запись')
+            time.sleep(3)
+            tap('Пауза')
+            wait_text(f'Лента · {count} ·', contains=True)
+        shot('06-recorded-clips')
+        tap('Удалить кусок')
+        wait_text('Удалить этот кусок?')
+        tap('Удалить', last=True)
+        wait_text('Лента · 1 ·', contains=True)
+        tap('Склеить и сохранить видео')
+        wait_text('Видео сохранено', timeout=120)
+        shot('07-video-saved')
+        tap('Готово')
+    print('APK UI: photo capture/save/gallery deletion/settings/theme passed; API29+ also recorded two video clips, deleted one and exported the survivor.')
 finally:
     (OUT / 'logcat.txt').write_bytes(adb('logcat', '-d'))
     shot('last-state')

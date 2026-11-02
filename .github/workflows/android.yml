@@ -100,7 +100,7 @@ jobs:
     timeout-minutes: 25
     strategy:
       fail-fast: false
-      matrix: {api: [26, 29, 35]}
+      matrix: {api: [28, 29, 35]}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -136,7 +136,7 @@ jobs:
         run: |
           tag="v0.2.0-test-${GITHUB_RUN_NUMBER}"
           cat > /tmp/release-notes.md <<'NOTES'
-          YAi Retro Camera 0.2.0 — first feature release for Android 8+.
+          YAi Retro Camera 0.2.0 — first feature release for Android 9+.
           Six photo/video cameras, effect intensity, Full HD/4K options when supported, removable/reorderable clips, saved gallery management, photo booth/collage/polaroid, media import, date/REC and two interface styles.
           Live microphone is the default. Vintage sound is optional; no artificial crackle is added.
           Build, signature, source tests, synthetic native media tests and emulator launch checks passed. Xiaomi Mi 8 / Android 10 still needs the owner's real camera/microphone test.
