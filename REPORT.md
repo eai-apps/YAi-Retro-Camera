@@ -1,3 +1,7 @@
+## Подтверждение владельца — 04.11.2026
+
+Владелец подтвердил, что версия 0.2.0 работает на Xiaomi Mi 8 / Android 10. Есть пока неописанные недостатки; список будет предоставлен позже. Это общее подтверждение работы, а не приёмка каждого режима/звука/4K. Подробная актуальная передача и остаток работ — HANDOFF §16. Новых сборок/тестов при этой записи не запускалось.
+
 # Поставка 0.2.0 / проверенный APK — 04.11.2026, Codex (GPT-6)
 
 **[Скачать обновление APK](https://github.com/eai-apps/YAi-Retro-Camera/releases/download/v0.2.0-test-29/YAi-Retro-Camera-0.2.0.apk)** · [Release](https://github.com/eai-apps/YAi-Retro-Camera/releases/tag/v0.2.0-test-29) · [успешный CI](https://github.com/eai-apps/YAi-Retro-Camera/actions/runs/41918642264).
