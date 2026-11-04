@@ -4,6 +4,17 @@ const fs=require('fs');
 const path=require('path');
 const root=path.dirname(require.resolve('react-native-vision-camera/package.json'));
 if(require(path.join(root,'package.json')).version!=='4.7.3')throw Error('Review camera readiness patch for the new version');
+// A failed bind stores the requested configuration before activating lifecycle.
+// Retrying with the compatibility outputs must still resume the camera, even
+// when isActive itself did not change (CI28 stayed CREATED and recorded no data).
+const sessionFile=path.join(root,'android/src/main/java/com/mrousavy/camera/core/CameraSession.kt');
+let session=fs.readFileSync(sessionFile,'utf8');
+const activeBefore='if (diff.isActiveChanged) {';
+const activeAfter='if (diff.isActiveChanged || (config.isActive && lifecycle.currentState != Lifecycle.State.RESUMED)) { // YAi: recover activation after a failed bind.';
+if(!session.includes(activeAfter)){
+  if(!session.includes(activeBefore))throw Error('Review camera lifecycle recovery patch');
+  fs.writeFileSync(sessionFile,session.replace(activeBefore,activeAfter));
+}
 const file=path.join(root,'android/src/main/java/com/mrousavy/camera/react/CameraDevicesManager.kt');
 let code=fs.readFileSync(file,'utf8');
 const anchor='Log.i(TAG, "Successfully initialized!")';
